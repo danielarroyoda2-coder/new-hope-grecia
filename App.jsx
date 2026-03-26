@@ -1,43 +1,6 @@
 import React from "react";
-
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
-    id: 1,
-    name: "Vestido de Baño Tropical",
-    category: "Vestidos de baño",
-    price: "₡18.900",
-    stock: 12,
-    image:
-      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 2,
-    name: "Blusa Casual",
-    category: "Blusas",
-    price: "₡12.900",
-    stock: 9,
-    image:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 3,
-    name: "Camisa Hombre Formal",
-    category: "Camisas",
-    price: "₡15.900",
-    stock: 10,
-    image:
-      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 4,
-    name: "Vestido Elegante",
-    category: "Vestidos",
-    price: "₡24.500",
-    stock: 7,
-    image:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80",
-  },
-];
 
 const categories = [
   "Blusas",
@@ -59,15 +22,16 @@ export default function App() {
 
   async function getProducts() {
     const { data, error } = await supabase
-      .from("products")
+      .from("Productos")
       .select("*");
 
     if (error) {
       console.error(error);
     } else {
-      setProducts(data);
+      setProducts(data || []);
     }
   }
+
   return (
     <div className="site">
       <header className="topbar">
@@ -133,23 +97,29 @@ export default function App() {
           </div>
 
           <div className="product-grid">
-           {products.map((product) => (
-              <article className="product-card" key={product.id}>
-                <div className="product-image-wrap">
-                  <img src={product.image} alt={product.name} />
-                </div>
-
-                <div className="product-body">
-                  <p className="product-category">{product.category}</p>
-                  <h4>{product.name}</h4>
-                  <div className="product-row">
-                   <span className="price">₡{product.price}</span>
-                    <span className="stock">Stock: {product.stock}</span>
+            {products.length > 0 ? (
+              products.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="product-image-wrap">
+                    <img src={product.image} alt={product.name} />
                   </div>
-                  <button className="btn btn-primary full">Agregar</button>
-                </div>
-              </article>
-            ))}
+
+                  <div className="product-body">
+                    <p className="product-category">{product.category}</p>
+                    <h4>{product.name}</h4>
+                    <div className="product-row">
+                      <span className="price">₡{product.price}</span>
+                      <span className="stock">Stock: {product.stock}</span>
+                    </div>
+                    <button className="btn btn-primary full">Agregar</button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">
+                Todavía no hay productos cargados en Supabase.
+              </div>
+            )}
           </div>
         </div>
       </section>
