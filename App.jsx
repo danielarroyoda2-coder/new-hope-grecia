@@ -13,8 +13,19 @@ const categories = [
   "Vestidos de baño",
 ];
 
+const initialForm = {
+  name: "",
+  price: "",
+  stock: "",
+  image: "",
+  category: "Vestidos",
+};
+
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [form, setForm] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     getProducts();
@@ -23,13 +34,57 @@ export default function App() {
   async function getProducts() {
     const { data, error } = await supabase
       .from("Productos")
-      .select("*");
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error(error);
+      setMessage("No se pudieron cargar los productos.");
     } else {
       setProducts(data || []);
     }
+  }
+
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+
+    if (!form.name || !form.price || !form.stock || !form.image || !form.category) {
+      setMessage("Completá todos los campos.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.from("Productos").insert([
+      {
+        name: form.name,
+        price: Number(form.price),
+        stock: Number(form.stock),
+        image: form.image,
+        category: form.category,
+      },
+    ]);
+
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      setMessage("Hubo un error al guardar el producto.");
+      return;
+    }
+
+    setForm(initialForm);
+    setMessage("Producto guardado correctamente.");
+    getProducts();
   }
 
   return (
@@ -71,8 +126,8 @@ export default function App() {
 
           <div className="hero-card">
             <div className="hero-stat">
-              <strong>+100</strong>
-              <span>Productos listos para vender</span>
+              <strong>{products.length}</strong>
+              <span>Productos cargados en la base de datos</span>
             </div>
             <div className="hero-stat">
               <strong>SINPE + Tarjeta</strong>
@@ -117,7 +172,8 @@ export default function App() {
               ))
             ) : (
               <div className="empty-state">
-                Todavía no hay productos cargados en Supabase.
+                Todavía no hay productos cargados. Usá el panel de administración
+                de abajo para agregar el primero.
               </div>
             )}
           </div>
@@ -145,21 +201,122 @@ export default function App() {
 
       <section className="section" id="admin">
         <div className="container">
-          <div className="admin-box">
+          <div className="admin-box admin-box-full">
             <div>
               <p className="section-kicker">Administración</p>
-              <h3>Panel listo para el siguiente paso</h3>
+              <h3>Panel de productos</h3>
               <p className="admin-text">
-                Esta versión ya está publicada. El siguiente paso es conectar
-                productos reales, usuarios y base de datos para que puedas dar
-                mantenimiento desde un panel privado.
+                Desde aquí ya podés agregar productos reales a tu tienda. Cada
+                producto que guardés en este formulario se guarda en Supabase y
+                aparece arriba en el catálogo.
               </p>
             </div>
 
-            <div className="admin-actions">
-              <button className="btn btn-primary">Entrar a administrar</button>
-              <button className="btn btn-secondary">Conectar Supabase</button>
+            <form className="admin-form" onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="field">
+                  <label>Nombre del producto</label>
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="Ej. Vestido rojo"
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Precio</label>
+                  <input
+                    name="price"
+                    type="number"
+                    value={form.price}
+                    onChange={handleChange}
+                    placeholder="18900"
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Stock</label>
+                  <input
+                    name="stock"
+                    type="number"
+                    value={form.stock}
+                    onChange={handleChange}
+                    placeholder="10"
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Categoría</label>
+                  <select
+                    name="category"
+                    value={form.category}
+                    onChange={handleChange}
+                  >
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field field-full">
+                  <label>URL de imagen</label>
+                  <input
+                    name="image"
+                    value={form.image}
+                    onChange={handleChange}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="admin-actions">
+                <button className="btn btn-primary" type="submit" disabled={loading}>
+                  {loading ? "Guardando..." : "Guardar producto"}
+                </button>
+
+                <a className="btn btn-secondary" href="#destacados">
+                  Ver productos
+                </a>
+              </div>
+
+              {message ? <p className="status-message">{message}</p> : null}
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section className="section light">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="section-kicker">Base de datos</p>
+              <h3>Productos cargados</h3>
             </div>
+          </div>
+
+          <div className="admin-list">
+            {products.length > 0 ? (
+              products.map((product) => (
+                <div className="admin-list-item" key={product.id}>
+                  <img src={product.image} alt={product.name} />
+                  <div className="admin-list-info">
+                    <strong>{product.name}</strong>
+                    <span>{product.category}</span>
+                  </div>
+                  <div className="admin-list-meta">
+                    <span>₡{product.price}</span>
+                    <span>Stock: {product.stock}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                Aún no hay productos guardados en la base de datos.
+              </div>
+            )}
           </div>
         </div>
       </section>
