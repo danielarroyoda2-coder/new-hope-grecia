@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 
 const categories = [
@@ -14,9 +14,9 @@ const categories = [
 ];
 
 const allowedEmails = [
-  "daniel.arroyo.da2@roche.com",
-  "outlethopecr@gmail.com",
-  "anacatalinajimenez88@gmail.com",
+  "tucorreo@gmail.com",
+  "esposa@gmail.com",
+  "empleada@gmail.com",
 ];
 
 const initialForm = {
@@ -39,8 +39,16 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [userEmail, setUserEmail] = useState("");
 
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
   useEffect(() => {
     getProducts();
+
+    const savedCart = localStorage.getItem("bnhg_cart");
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       const currentSession = data.session;
@@ -57,6 +65,10 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("bnhg_cart", JSON.stringify(cart));
+  }, [cart]);
 
   async function getProducts() {
     const { data, error } = await supabase
@@ -213,7 +225,71 @@ export default function App() {
     setAuthMessage("Sesión cerrada.");
   }
 
+  function addToCart(product) {
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id);
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id
+            ? { ...item, qty: Math.min(item.qty + 1, product.stock) }
+            : item
+        );
+      }
+      return [...current, { ...product, qty: 1 }];
+    });
+    setCartOpen(true);
+  }
+
+  function increaseQty(id) {
+    setCart((current) =>
+      current.map((item) => {
+        if (item.id !== id) return item;
+        return {
+          ...item,
+          qty: Math.min(item.qty + 1, item.stock),
+        };
+      })
+    );
+  }
+
+  function decreaseQty(id) {
+    setCart((current) =>
+      current
+        .map((item) => {
+          if (item.id !== id) return item;
+          return { ...item, qty: item.qty - 1 };
+        })
+        .filter((item) => item.qty > 0)
+    );
+  }
+
+  function removeFromCart(id) {
+    setCart((current) => current.filter((item) => item.id !== id));
+  }
+
+  function clearCart() {
+    setCart([]);
+  }
+
+  const cartCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.qty, 0),
+    [cart]
+  );
+
+  const cartTotal = useMemo(
+    () => cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0),
+    [cart]
+  );
+
   const isAllowedUser = session && allowedEmails.includes((userEmail || "").toLowerCase());
+
+  const whatsappCartMessage = encodeURIComponent(
+    cart.length
+      ? `Hola, quiero pedir estos productos:\n${cart
+          .map((item) => `- ${item.name} x${item.qty} = ₡${Number(item.price) * item.qty}`)
+          .join("\n")}\nTotal: ₡${cartTotal}`
+      : "Hola, quiero información sobre sus productos."
+  );
 
   return (
     <div className="site">
@@ -224,11 +300,17 @@ export default function App() {
             <h1 className="brand">Boutique New Hope Grecia</h1>
           </div>
 
-          <nav className="nav">
-            <a href="#catalogo">Catálogo</a>
-            <a href="#destacados">Destacados</a>
-            <a href="#admin">Administrar</a>
-          </nav>
+          <div className="nav-cart-wrap">
+            <nav className="nav">
+              <a href="#catalogo">Catálogo</a>
+              <a href="#destacados">Destacados</a>
+              <a href="#admin">Administrar</a>
+            </nav>
+
+            <button className="cart-button" onClick={() => setCartOpen(true)}>
+              Carrito ({cartCount})
+            </button>
+          </div>
         </div>
       </header>
 
@@ -262,8 +344,8 @@ export default function App() {
               <span>Acceso administrativo por correo</span>
             </div>
             <div className="hero-stat">
-              <strong>{isAllowedUser ? userEmail : "Tu equipo"}</strong>
-              <span>Vos, tu empleada y la jefa</span>
+              <strong>{cartCount}</strong>
+              <span>Productos en el carrito</span>
             </div>
           </div>
         </div>
@@ -294,24 +376,29 @@ export default function App() {
                       <span className="price">₡{product.price}</span>
                       <span className="stock">Stock: {product.stock}</span>
                     </div>
-   <div className="product-buttons">
- <button className="btn btn-secondary product-btn">
-  Agregar al carrito
-</button>
 
-  <a
-    className="btn btn-primary product-btn"
-    href={`https://wa.me/50670477509?text=${encodeURIComponent(
-      `Hola, quiero este producto:
+                    <div className="product-buttons">
+                      <button
+                        className="btn btn-secondary product-btn"
+                        type="button"
+                        onClick={() => addToCart(product)}
+                      >
+                        Agregar al carrito
+                      </button>
+
+                      <a
+                        className="btn btn-primary product-btn"
+                        href={`https://wa.me/50670477509?text=${encodeURIComponent(
+                          `Hola, quiero este producto:
 ${product.name}
 Precio: ₡${product.price}`
-    )}`}
-    target="_blank"
-    rel="noreferrer"
-  >
-    WhatsApp
-  </a>
-</div>
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        WhatsApp
+                      </a>
+                    </div>
                   </div>
                 </article>
               ))
@@ -534,6 +621,72 @@ Precio: ₡${product.price}`
             </div>
           </div>
         </section>
+      ) : null}
+
+      {cartOpen ? (
+        <div className="cart-overlay" onClick={() => setCartOpen(false)}>
+          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <h3>Tu carrito</h3>
+              <button className="cart-close" onClick={() => setCartOpen(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="cart-body">
+              {cart.length === 0 ? (
+                <div className="empty-state">Tu carrito está vacío.</div>
+              ) : (
+                cart.map((item) => (
+                  <div className="cart-item" key={item.id}>
+                    <img src={item.image} alt={item.name} />
+                    <div className="cart-item-info">
+                      <strong>{item.name}</strong>
+                      <span>₡{item.price}</span>
+                      <span>Stock: {item.stock}</span>
+                    </div>
+
+                    <div className="cart-item-actions">
+                      <div className="qty-box">
+                        <button onClick={() => decreaseQty(item.id)}>-</button>
+                        <span>{item.qty}</span>
+                        <button onClick={() => increaseQty(item.id)}>+</button>
+                      </div>
+                      <button
+                        className="remove-btn"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="cart-footer">
+              <div className="cart-total">
+                <strong>Total:</strong>
+                <span>₡{cartTotal}</span>
+              </div>
+
+              <div className="cart-footer-buttons">
+                <button className="btn btn-secondary" onClick={clearCart}>
+                  Vaciar carrito
+                </button>
+
+                <a
+                  className="btn btn-primary"
+                  href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Pedir por WhatsApp
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <footer className="footer">
