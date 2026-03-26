@@ -1,7 +1,7 @@
 import React from "react";
 
-const featuredProducts = [
-  {
+import { useEffect, useState } from "react";
+import { supabase } from "./supabase";
     id: 1,
     name: "Vestido de Baño Tropical",
     category: "Vestidos de baño",
@@ -51,6 +51,23 @@ const categories = [
 ];
 
 export default function App() {
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    getProducts();
+  }, []);
+
+  async function getProducts() {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*");
+
+    if (error) {
+      console.error(error);
+    } else {
+      setProducts(data);
+    }
+  }
   return (
     <div className="site">
       <header className="topbar">
@@ -116,7 +133,7 @@ export default function App() {
           </div>
 
           <div className="product-grid">
-            {featuredProducts.map((product) => (
+           {products.map((product) => (
               <article className="product-card" key={product.id}>
                 <div className="product-image-wrap">
                   <img src={product.image} alt={product.name} />
@@ -126,7 +143,7 @@ export default function App() {
                   <p className="product-category">{product.category}</p>
                   <h4>{product.name}</h4>
                   <div className="product-row">
-                    <span className="price">{product.price}</span>
+                   <span className="price">₡{product.price}</span>
                     <span className="stock">Stock: {product.stock}</span>
                   </div>
                   <button className="btn btn-primary full">Agregar</button>
