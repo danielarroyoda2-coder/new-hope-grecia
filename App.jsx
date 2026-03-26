@@ -26,6 +26,7 @@ export default function App() {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getProducts();
@@ -53,6 +54,25 @@ export default function App() {
     }));
   }
 
+  function handleEdit(product) {
+    setEditingId(product.id);
+    setForm({
+      name: product.name || "",
+      price: product.price || "",
+      stock: product.stock || "",
+      image: product.image || "",
+      category: product.category || "Vestidos",
+    });
+    setMessage("Editando producto.");
+    document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setForm(initialForm);
+    setMessage("Edición cancelada.");
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setMessage("");
@@ -63,6 +83,33 @@ export default function App() {
     }
 
     setLoading(true);
+
+    if (editingId) {
+      const { error } = await supabase
+        .from("Productos")
+        .update({
+          name: form.name,
+          price: Number(form.price),
+          stock: Number(form.stock),
+          image: form.image,
+          category: form.category,
+        })
+        .eq("id", editingId);
+
+      setLoading(false);
+
+      if (error) {
+        console.error(error);
+        setMessage("Hubo un error al actualizar el producto.");
+        return;
+      }
+
+      setEditingId(null);
+      setForm(initialForm);
+      setMessage("Producto actualizado correctamente.");
+      getProducts();
+      return;
+    }
 
     const { error } = await supabase.from("Productos").insert([
       {
@@ -84,6 +131,30 @@ export default function App() {
 
     setForm(initialForm);
     setMessage("Producto guardado correctamente.");
+    getProducts();
+  }
+
+  async function handleDelete(id) {
+    const confirmDelete = window.confirm("¿Querés eliminar este producto?");
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from("Productos")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      setMessage("No se pudo eliminar el producto.");
+      return;
+    }
+
+    if (editingId === id) {
+      setEditingId(null);
+      setForm(initialForm);
+    }
+
+    setMessage("Producto eliminado correctamente.");
     getProducts();
   }
 
@@ -204,11 +275,11 @@ export default function App() {
           <div className="admin-box admin-box-full">
             <div>
               <p className="section-kicker">Administración</p>
-              <h3>Panel de productos</h3>
+              <h3>{editingId ? "Editar producto" : "Panel de productos"}</h3>
               <p className="admin-text">
-                Desde aquí ya podés agregar productos reales a tu tienda. Cada
-                producto que guardés en este formulario se guarda en Supabase y
-                aparece arriba en el catálogo.
+                {editingId
+                  ? "Estás editando un producto existente. Cambiá los datos y guardá."
+                  : "Desde aquí ya podés agregar productos reales a tu tienda. Cada producto que guardés en este formulario se guarda en Supabase y aparece arriba en el catálogo."}
               </p>
             </div>
 
@@ -274,12 +345,26 @@ export default function App() {
 
               <div className="admin-actions">
                 <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar producto"}
+                  {loading
+                    ? "Guardando..."
+                    : editingId
+                    ? "Guardar cambios"
+                    : "Guardar producto"}
                 </button>
 
-                <a className="btn btn-secondary" href="#destacados">
-                  Ver productos
-                </a>
+                {editingId ? (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={handleCancelEdit}
+                  >
+                    Cancelar edición
+                  </button>
+                ) : (
+                  <a className="btn btn-secondary" href="#destacados">
+                    Ver productos
+                  </a>
+                )}
               </div>
 
               {message ? <p className="status-message">{message}</p> : null}
@@ -309,6 +394,22 @@ export default function App() {
                   <div className="admin-list-meta">
                     <span>₡{product.price}</span>
                     <span>Stock: {product.stock}</span>
+                  </div>
+                  <div className="admin-list-buttons">
+                    <button
+                      className="btn btn-secondary small-btn"
+                      type="button"
+                      onClick={() => handleEdit(product)}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      className="btn btn-primary small-btn"
+                      type="button"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </div>
               ))
