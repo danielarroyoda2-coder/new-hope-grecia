@@ -13,6 +13,12 @@ const categories = [
   "Vestidos de baño",
 ];
 
+const allowedEmails = [
+  "daniel.arroyo.da2@roche.com",
+  "outlethopecr@gmail.com",
+  "anacatalinajimenez88@gmail.com",
+];
+
 const initialForm = {
   name: "",
   price: "",
@@ -28,8 +34,28 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [editingId, setEditingId] = useState(null);
 
+  const [email, setEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [session, setSession] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
+
   useEffect(() => {
     getProducts();
+
+    supabase.auth.getSession().then(({ data }) => {
+      const currentSession = data.session;
+      setSession(currentSession || null);
+      setUserEmail(currentSession?.user?.email || "");
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession || null);
+      setUserEmail(currentSession?.user?.email || "");
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   async function getProducts() {
@@ -138,10 +164,7 @@ export default function App() {
     const confirmDelete = window.confirm("¿Querés eliminar este producto?");
     if (!confirmDelete) return;
 
-    const { error } = await supabase
-      .from("Productos")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("Productos").delete().eq("id", id);
 
     if (error) {
       console.error(error);
@@ -157,6 +180,40 @@ export default function App() {
     setMessage("Producto eliminado correctamente.");
     getProducts();
   }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setAuthMessage("");
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!allowedEmails.includes(cleanEmail)) {
+      setAuthMessage("Ese correo no tiene permiso para administrar.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        emailRedirectTo: "https://new-hope-grecia.vercel.app",
+      },
+    });
+
+    if (error) {
+      console.error(error);
+      setAuthMessage("No se pudo enviar el enlace al correo.");
+      return;
+    }
+
+    setAuthMessage("Te envié un enlace de ingreso a tu correo.");
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setAuthMessage("Sesión cerrada.");
+  }
+
+  const isAllowedUser = session && allowedEmails.includes((userEmail || "").toLowerCase());
 
   return (
     <div className="site">
@@ -201,11 +258,11 @@ export default function App() {
               <span>Productos cargados en la base de datos</span>
             </div>
             <div className="hero-stat">
-              <strong>SINPE + Tarjeta</strong>
-              <span>Pagos preparados para integrar</span>
+              <strong>{isAllowedUser ? "Activo" : "Protegido"}</strong>
+              <span>Acceso administrativo por correo</span>
             </div>
             <div className="hero-stat">
-              <strong>Tu equipo</strong>
+              <strong>{isAllowedUser ? userEmail : "Tu equipo"}</strong>
               <span>Vos, tu empleada y la jefa</span>
             </div>
           </div>
@@ -272,155 +329,195 @@ export default function App() {
 
       <section className="section" id="admin">
         <div className="container">
-          <div className="admin-box admin-box-full">
-            <div>
-              <p className="section-kicker">Administración</p>
-              <h3>{editingId ? "Editar producto" : "Panel de productos"}</h3>
-              <p className="admin-text">
-                {editingId
-                  ? "Estás editando un producto existente. Cambiá los datos y guardá."
-                  : "Desde aquí ya podés agregar productos reales a tu tienda. Cada producto que guardés en este formulario se guarda en Supabase y aparece arriba en el catálogo."}
-              </p>
-            </div>
-
-            <form className="admin-form" onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="field">
-                  <label>Nombre del producto</label>
-                  <input
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Ej. Vestido rojo"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>Precio</label>
-                  <input
-                    name="price"
-                    type="number"
-                    value={form.price}
-                    onChange={handleChange}
-                    placeholder="18900"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>Stock</label>
-                  <input
-                    name="stock"
-                    type="number"
-                    value={form.stock}
-                    onChange={handleChange}
-                    placeholder="10"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>Categoría</label>
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                  >
-                    {categories.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field field-full">
-                  <label>URL de imagen</label>
-                  <input
-                    name="image"
-                    value={form.image}
-                    onChange={handleChange}
-                    placeholder="https://..."
-                  />
-                </div>
+          {!isAllowedUser ? (
+            <div className="admin-box admin-box-full">
+              <div>
+                <p className="section-kicker">Acceso administrativo</p>
+                <h3>Ingresar con correo</h3>
+                <p className="admin-text">
+                  Solo los correos autorizados pueden entrar al panel de administración.
+                </p>
               </div>
 
-              <div className="admin-actions">
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading
-                    ? "Guardando..."
-                    : editingId
-                    ? "Guardar cambios"
-                    : "Guardar producto"}
-                </button>
+              <form className="admin-form" onSubmit={handleLogin}>
+                <div className="form-grid">
+                  <div className="field field-full">
+                    <label>Correo autorizado</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tucorreo@gmail.com"
+                    />
+                  </div>
+                </div>
 
-                {editingId ? (
-                  <button
-                    className="btn btn-secondary"
-                    type="button"
-                    onClick={handleCancelEdit}
-                  >
-                    Cancelar edición
+                <div className="admin-actions">
+                  <button className="btn btn-primary" type="submit">
+                    Enviar enlace de ingreso
                   </button>
-                ) : (
-                  <a className="btn btn-secondary" href="#destacados">
-                    Ver productos
-                  </a>
-                )}
+                </div>
+
+                {authMessage ? <p className="status-message">{authMessage}</p> : null}
+              </form>
+            </div>
+          ) : (
+            <div className="admin-box admin-box-full">
+              <div className="admin-top-row">
+                <div>
+                  <p className="section-kicker">Administración</p>
+                  <h3>{editingId ? "Editar producto" : "Panel de productos"}</h3>
+                  <p className="admin-text">
+                    Sesión iniciada como <strong>{userEmail}</strong>.
+                  </p>
+                </div>
+
+                <button className="btn btn-secondary" type="button" onClick={handleLogout}>
+                  Cerrar sesión
+                </button>
               </div>
 
-              {message ? <p className="status-message">{message}</p> : null}
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <section className="section light">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <p className="section-kicker">Base de datos</p>
-              <h3>Productos cargados</h3>
-            </div>
-          </div>
-
-          <div className="admin-list">
-            {products.length > 0 ? (
-              products.map((product) => (
-                <div className="admin-list-item" key={product.id}>
-                  <img src={product.image} alt={product.name} />
-                  <div className="admin-list-info">
-                    <strong>{product.name}</strong>
-                    <span>{product.category}</span>
+              <form className="admin-form" onSubmit={handleSubmit}>
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Nombre del producto</label>
+                    <input
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      placeholder="Ej. Vestido rojo"
+                    />
                   </div>
-                  <div className="admin-list-meta">
-                    <span>₡{product.price}</span>
-                    <span>Stock: {product.stock}</span>
+
+                  <div className="field">
+                    <label>Precio</label>
+                    <input
+                      name="price"
+                      type="number"
+                      value={form.price}
+                      onChange={handleChange}
+                      placeholder="18900"
+                    />
                   </div>
-                  <div className="admin-list-buttons">
-                    <button
-                      className="btn btn-secondary small-btn"
-                      type="button"
-                      onClick={() => handleEdit(product)}
+
+                  <div className="field">
+                    <label>Stock</label>
+                    <input
+                      name="stock"
+                      type="number"
+                      value={form.stock}
+                      onChange={handleChange}
+                      placeholder="10"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label>Categoría</label>
+                    <select
+                      name="category"
+                      value={form.category}
+                      onChange={handleChange}
                     >
-                      Editar
-                    </button>
-                    <button
-                      className="btn btn-primary small-btn"
-                      type="button"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      Eliminar
-                    </button>
+                      {categories.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field field-full">
+                    <label>URL de imagen</label>
+                    <input
+                      name="image"
+                      value={form.image}
+                      onChange={handleChange}
+                      placeholder="https://..."
+                    />
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                Aún no hay productos guardados en la base de datos.
-              </div>
-            )}
-          </div>
+
+                <div className="admin-actions">
+                  <button className="btn btn-primary" type="submit" disabled={loading}>
+                    {loading
+                      ? "Guardando..."
+                      : editingId
+                      ? "Guardar cambios"
+                      : "Guardar producto"}
+                  </button>
+
+                  {editingId ? (
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancelar edición
+                    </button>
+                  ) : (
+                    <a className="btn btn-secondary" href="#destacados">
+                      Ver productos
+                    </a>
+                  )}
+                </div>
+
+                {message ? <p className="status-message">{message}</p> : null}
+              </form>
+            </div>
+          )}
         </div>
       </section>
+
+      {isAllowedUser ? (
+        <section className="section light">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Base de datos</p>
+                <h3>Productos cargados</h3>
+              </div>
+            </div>
+
+            <div className="admin-list">
+              {products.length > 0 ? (
+                products.map((product) => (
+                  <div className="admin-list-item" key={product.id}>
+                    <img src={product.image} alt={product.name} />
+                    <div className="admin-list-info">
+                      <strong>{product.name}</strong>
+                      <span>{product.category}</span>
+                    </div>
+                    <div className="admin-list-meta">
+                      <span>₡{product.price}</span>
+                      <span>Stock: {product.stock}</span>
+                    </div>
+                    <div className="admin-list-buttons">
+                      <button
+                        className="btn btn-secondary small-btn"
+                        type="button"
+                        onClick={() => handleEdit(product)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-primary small-btn"
+                        type="button"
+                        onClick={() => handleDelete(product.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  Aún no hay productos guardados en la base de datos.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <footer className="footer">
         <div className="container footer-inner">
