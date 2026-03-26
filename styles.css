@@ -529,3 +529,10 @@ img {
     flex-wrap: wrap;
   }
 }
+.admin-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
