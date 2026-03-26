@@ -512,3 +512,20 @@ img {
     text-align: left;
   }
 }
+.admin-list-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.small-btn {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .admin-list-buttons {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
