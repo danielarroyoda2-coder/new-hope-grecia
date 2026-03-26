@@ -295,9 +295,9 @@ export default function App() {
                       <span className="stock">Stock: {product.stock}</span>
                     </div>
    <div className="product-buttons">
-  <button className="btn btn-secondary product-btn">
-    Agregar
-  </button>
+ <button className="btn btn-secondary product-btn">
+  Agregar al carrito
+</button>
 
   <a
     className="btn btn-primary product-btn"
