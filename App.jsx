@@ -14,9 +14,9 @@ const categories = [
 ];
 
 const allowedEmails = [
-  "tucorreo@gmail.com",
-  "esposa@gmail.com",
-  "empleada@gmail.com",
+  "daniel.arroyo.da2@roche.com",
+  "anacatalinajimenez88@gmail.com",
+  "outlethopecr@gmail.com",
 ];
 
 const initialForm = {
