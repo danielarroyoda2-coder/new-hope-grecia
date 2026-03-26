@@ -295,16 +295,24 @@ export default function App() {
                       <span className="stock">Stock: {product.stock}</span>
                     </div>
                     <a
-  className="btn btn-primary full"
-  href={`https://wa.me/50670477509?text=${encodeURIComponent(
-    `Hola, quiero este producto:
+  <div className="product-buttons">
+  <button className="btn btn-secondary product-btn">
+    Agregar
+  </button>
+
+  <a
+    className="btn btn-primary product-btn"
+    href={`https://wa.me/506TU_NUMERO?text=${encodeURIComponent(
+      `Hola, quiero este producto:
 ${product.name}
 Precio: ₡${product.price}`
-  )}`}
-  target="_blank"
->
-  Comprar por WhatsApp
-</a>
+    )}`}
+    target="_blank"
+    rel="noreferrer"
+  >
+    WhatsApp
+  </a>
+</div>
                   </div>
                 </article>
               ))
