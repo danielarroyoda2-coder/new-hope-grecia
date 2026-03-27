@@ -722,3 +722,18 @@ Precio: ₡${product.price}`
     </div>
   </div>
 ) : null}
+<footer className="footer">
+  <div className="container footer-inner">
+    <div>
+      <strong>Boutique New Hope Grecia</strong>
+      <p>Moda femenina y masculina con estilo, color y elegancia.</p>
+    </div>
+    <div>
+      <p>Grecia, Costa Rica</p>
+      <p>WhatsApp y pagos reales próximamente</p>
+    </div>
+  </div>
+</footer>
+</div>
+);
+}
