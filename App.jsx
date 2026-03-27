@@ -673,18 +673,21 @@ Precio: ₡${product.price}`
         <div className="cart-footer-buttons">
           <button className="btn btn-secondary" onClick={clearCart}>
             Vaciar carrito
-          </button>
-
-          <a
-            className="btn btn-primary"
-            href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Pedir por WhatsApp
-          </a>
-
           <button
+  className="btn btn-primary"
+  type="button"
+  onClick={async () => {
+    const ok = await saveOrder("whatsapp");
+    if (!ok) return;
+
+    window.open(
+      `https://wa.me/50670477509?text=${whatsappCartMessage}`,
+      "_blank"
+    );
+  }}
+>
+  Pedir por WhatsApp
+</button>
             className="btn btn-primary"
             onClick={() =>
               alert(
