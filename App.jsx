@@ -623,7 +623,7 @@ Precio: ₡${product.price}`
         </section>
       ) : null}
 
-     {cartOpen ? (
+   {cartOpen ? (
   <div className="cart-overlay" onClick={() => setCartOpen(false)}>
     <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
       <div className="cart-header">
