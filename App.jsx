@@ -688,7 +688,7 @@ Precio: ₡${product.price}`
     Pagar con SINPE
   </button>
 
-  <button className="btn btn-secondary" onClick={() => alert("Transferencia bancaria:\n\nBanco: (poné tu banco)\nCuenta: (tu cuenta)\nMonto: ₡" + cartTotal)}>
+  <button className="btn btn-secondary" onClick={() => alert("Transferencia bancaria:\n\nBanco: (BAC)\nCuenta: (945904472)\nMonto: ₡" + cartTotal)}>
     Transferencia
   </button>
 
