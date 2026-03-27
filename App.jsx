@@ -671,23 +671,35 @@ Precio: ₡${product.price}`
               </div>
 
               <div className="cart-footer-buttons">
-                <button className="btn btn-secondary" onClick={clearCart}>
-                  Vaciar carrito
-                </button>
+  <button className="btn btn-secondary" onClick={clearCart}>
+    Vaciar carrito
+  </button>
 
-                <a
-                  className="btn btn-primary"
-                  href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Pedir por WhatsApp
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+  <a
+    className="btn btn-primary"
+    href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
+    target="_blank"
+    rel="noreferrer"
+  >
+    Pedir por WhatsApp
+  </a>
+
+  <button className="btn btn-primary" onClick={() => alert("SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" + cartTotal + "\n\nEnviá comprobante por WhatsApp")}>
+    Pagar con SINPE
+  </button>
+
+  <button className="btn btn-secondary" onClick={() => alert("Transferencia bancaria:\n\nBanco: (poné tu banco)\nCuenta: (tu cuenta)\nMonto: ₡" + cartTotal)}>
+    Transferencia
+  </button>
+
+  <a
+    className="btn btn-primary"
+    href="https://TU_LINK_DE_PAGO"
+    target="_blank"
+  >
+    Pagar con tarjeta
+  </a>
+</div>
 
       <footer className="footer">
         <div className="container footer-inner">
