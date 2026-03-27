@@ -623,96 +623,102 @@ Precio: ₡${product.price}`
         </section>
       ) : null}
 
-      {cartOpen ? (
-        <div className="cart-overlay" onClick={() => setCartOpen(false)}>
-          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="cart-header">
-              <h3>Tu carrito</h3>
-              <button className="cart-close" onClick={() => setCartOpen(false)}>
-                ✕
-              </button>
-            </div>
+     {cartOpen ? (
+  <div className="cart-overlay" onClick={() => setCartOpen(false)}>
+    <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="cart-header">
+        <h3>Tu carrito</h3>
+        <button className="cart-close" onClick={() => setCartOpen(false)}>
+          ✕
+        </button>
+      </div>
 
-            <div className="cart-body">
-              {cart.length === 0 ? (
-                <div className="empty-state">Tu carrito está vacío.</div>
-              ) : (
-                cart.map((item) => (
-                  <div className="cart-item" key={item.id}>
-                    <img src={item.image} alt={item.name} />
-                    <div className="cart-item-info">
-                      <strong>{item.name}</strong>
-                      <span>₡{item.price}</span>
-                      <span>Stock: {item.stock}</span>
-                    </div>
-
-                    <div className="cart-item-actions">
-                      <div className="qty-box">
-                        <button onClick={() => decreaseQty(item.id)}>-</button>
-                        <span>{item.qty}</span>
-                        <button onClick={() => increaseQty(item.id)}>+</button>
-                      </div>
-                      <button
-                        className="remove-btn"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="cart-footer">
-              <div className="cart-total">
-                <strong>Total:</strong>
-                <span>₡{cartTotal}</span>
+      <div className="cart-body">
+        {cart.length === 0 ? (
+          <div className="empty-state">Tu carrito está vacío.</div>
+        ) : (
+          cart.map((item) => (
+            <div className="cart-item" key={item.id}>
+              <img src={item.image} alt={item.name} />
+              <div className="cart-item-info">
+                <strong>{item.name}</strong>
+                <span>₡{item.price}</span>
+                <span>Stock: {item.stock}</span>
               </div>
 
-              <div className="cart-footer-buttons">
-  <button className="btn btn-secondary" onClick={clearCart}>
-    Vaciar carrito
-  </button>
+              <div className="cart-item-actions">
+                <div className="qty-box">
+                  <button onClick={() => decreaseQty(item.id)}>-</button>
+                  <span>{item.qty}</span>
+                  <button onClick={() => increaseQty(item.id)}>+</button>
+                </div>
+                <button
+                  className="remove-btn"
+                  onClick={() => removeFromCart(item.id)}
+                >
+                  Quitar
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
-  <a
-    className="btn btn-primary"
-    href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
-    target="_blank"
-    rel="noreferrer"
-  >
-    Pedir por WhatsApp
-  </a>
-
-  <button className="btn btn-primary" onClick={() => alert("SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" + cartTotal + "\n\nEnviá comprobante por WhatsApp")}>
-    Pagar con SINPE
-  </button>
-
-  <button className="btn btn-secondary" onClick={() => alert("Transferencia bancaria:\n\nBanco: (BAC)\nCuenta: (945904472)\nMonto: ₡" + cartTotal)}>
-    Transferencia
-  </button>
-
-  <a
-    className="btn btn-primary"
-    href="https://TU_LINK_DE_PAGO"
-    target="_blank"
-  >
-    Pagar con tarjeta
-  </a>
-</div>
-
-      <footer className="footer">
-        <div className="container footer-inner">
-          <div>
-            <strong>Boutique New Hope Grecia</strong>
-            <p>Moda femenina y masculina con estilo, color y elegancia.</p>
-          </div>
-          <div>
-            <p>Grecia, Costa Rica</p>
-            <p>WhatsApp y pagos reales próximamente</p>
-          </div>
+      <div className="cart-footer">
+        <div className="cart-total">
+          <strong>Total:</strong>
+          <span>₡{cartTotal}</span>
         </div>
-      </footer>
+
+        <div className="cart-footer-buttons">
+          <button className="btn btn-secondary" onClick={clearCart}>
+            Vaciar carrito
+          </button>
+
+          <a
+            className="btn btn-primary"
+            href={`https://wa.me/50670477509?text=${whatsappCartMessage}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Pedir por WhatsApp
+          </a>
+
+          <button
+            className="btn btn-primary"
+            onClick={() =>
+              alert(
+                "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
+                  cartTotal +
+                  "\n\nEnviá comprobante por WhatsApp"
+              )
+            }
+          >
+            Pagar con SINPE
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={() =>
+              alert(
+                "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
+                  cartTotal
+              )
+            }
+          >
+            Transferencia
+          </button>
+
+          <a
+            className="btn btn-primary"
+            href="https://TU_LINK_DE_PAGO"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Pagar con tarjeta
+          </a>
+        </div>
+      </div>
     </div>
-  );
-}
+  </div>
+) : null}
