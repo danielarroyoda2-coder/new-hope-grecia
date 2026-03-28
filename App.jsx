@@ -42,6 +42,10 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
 
+  const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [lastOrderSummary, setLastOrderSummary] = useState(null);
+
   useEffect(() => {
     getProducts();
 
@@ -84,25 +88,75 @@ export default function App() {
     }
   }
 
-  async function saveOrder(method) {
-    const { error } = await supabase.from("Pedidos").insert([
+  function generateOrderNumber() {
+    return `NHG-${Date.now()}`;
+  }
+
+  async function createOrder(method) {
+    if (!cart.length) {
+      alert("El carrito está vacío.");
+      return null;
+    }
+
+    const orderNumber = generateOrderNumber();
+
+    const orderItems = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      price: Number(item.price),
+      subtotal: Number(item.price) * item.qty,
+    }));
+
+    const { error: orderError } = await supabase.from("Pedidos").insert([
       {
+        order_number: orderNumber,
         customer_name: "Cliente web",
         customer_phone: "No definido",
-        items: cart,
+        items: orderItems,
         total: cartTotal,
         payment_method: method,
         status: "pendiente",
       },
     ]);
 
-    if (error) {
-      console.error(error);
+    if (orderError) {
+      console.error(orderError);
       alert("Error guardando el pedido");
-      return false;
+      return null;
     }
 
-    return true;
+    for (const item of cart) {
+      const newStock = Math.max(Number(item.stock) - Number(item.qty), 0);
+
+      const { error: stockError } = await supabase
+        .from("Productos")
+        .update({ stock: newStock })
+        .eq("id", item.id);
+
+      if (stockError) {
+        console.error(stockError);
+      }
+    }
+
+    setLastOrderSummary({
+      orderNumber,
+      method,
+      total: cartTotal,
+      items: orderItems,
+    });
+
+    setSuccessMessage(`Compra exitosa. Tu número de pedido es ${orderNumber}.`);
+    clearCart();
+    setCartOpen(false);
+    await getProducts();
+
+    return {
+      orderNumber,
+      total: cartTotal,
+      items: orderItems,
+      method,
+    };
   }
 
   function handleChange(e) {
@@ -252,7 +306,7 @@ export default function App() {
       if (existing) {
         return current.map((item) =>
           item.id === product.id
-            ? { ...item, qty: Math.min(item.qty + 1, item.stock) }
+            ? { ...item, qty: Math.min(item.qty + 1, Number(item.stock)) }
             : item
         );
       }
@@ -267,7 +321,7 @@ export default function App() {
         if (item.id !== id) return item;
         return {
           ...item,
-          qty: Math.min(item.qty + 1, item.stock),
+          qty: Math.min(item.qty + 1, Number(item.stock)),
         };
       })
     );
@@ -305,13 +359,30 @@ export default function App() {
   const isAllowedUser =
     session && allowedEmails.includes((userEmail || "").toLowerCase());
 
-  const whatsappCartMessage = encodeURIComponent(
-    cart.length
-      ? `Hola, quiero pedir estos productos:\n${cart
-          .map((item) => `- ${item.name} x${item.qty} = ₡${Number(item.price) * item.qty}`)
-          .join("\n")}\nTotal: ₡${cartTotal}`
-      : "Hola, quiero información sobre sus productos."
-  );
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === "Todos") return products;
+    return products.filter((product) => product.category === selectedCategory);
+  }, [products, selectedCategory]);
+
+  function stockLabel(stock) {
+    const s = Number(stock);
+    if (s === 0) return "❌ Agotado";
+    if (s <= 4) return `⚠️ Stock bajo: ${s}`;
+    return `Stock: ${s}`;
+  }
+
+  function buildOrderWhatsappMessage(orderSummary) {
+    return encodeURIComponent(
+      `Nuevo pedido 🛍️
+
+Número de pedido: ${orderSummary.orderNumber}
+Método de pago: ${orderSummary.method}
+Total: ₡${orderSummary.total}
+
+Productos:
+${orderSummary.items.map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`).join("\n")}`
+    );
+  }
 
   return (
     <div className="site">
@@ -373,6 +444,49 @@ export default function App() {
         </div>
       </section>
 
+      {successMessage ? (
+        <section className="section">
+          <div className="container">
+            <div className="admin-box admin-box-full">
+              <div>
+                <p className="section-kicker">Compra exitosa</p>
+                <h3>{successMessage}</h3>
+                {lastOrderSummary ? (
+                  <div className="admin-text">
+                    <p><strong>Pedido:</strong> {lastOrderSummary.orderNumber}</p>
+                    <p><strong>Total:</strong> ₡{lastOrderSummary.total}</p>
+                    <p><strong>Método:</strong> {lastOrderSummary.method}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {lastOrderSummary ? (
+                <div className="admin-actions">
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    onClick={() => {
+                      const message = buildOrderWhatsappMessage(lastOrderSummary);
+                      window.open(`https://wa.me/50670477509?text=${message}`, "_blank");
+                    }}
+                  >
+                    Enviar pedido por WhatsApp
+                  </button>
+
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => setSuccessMessage("")}
+                  >
+                    Cerrar mensaje
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="section" id="destacados">
         <div className="container">
           <div className="section-head">
@@ -396,31 +510,17 @@ export default function App() {
                     <h4>{product.name}</h4>
                     <div className="product-row">
                       <span className="price">₡{product.price}</span>
-                      <span className="stock">Stock: {product.stock}</span>
+                      <span className="stock">{stockLabel(product.stock)}</span>
                     </div>
 
-                    <div className="product-buttons">
-                      <button
-                        className="btn btn-secondary product-btn"
-                        type="button"
-                        onClick={() => addToCart(product)}
-                      >
-                        Agregar al carrito
-                      </button>
-
-                      <a
-                        className="btn btn-primary product-btn"
-                        href={`https://wa.me/50670477509?text=${encodeURIComponent(
-                          `Hola, quiero este producto:
-${product.name}
-Precio: ₡${product.price}`
-                        )}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        WhatsApp
-                      </a>
-                    </div>
+                    <button
+                      className="btn btn-primary full"
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      disabled={Number(product.stock) === 0}
+                    >
+                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
+                    </button>
                   </div>
                 </article>
               ))
@@ -444,11 +544,58 @@ Precio: ₡${product.price}`
           </div>
 
           <div className="category-grid">
+            <button
+              type="button"
+              className={`category-card ${selectedCategory === "Todos" ? "category-active" : ""}`}
+              onClick={() => setSelectedCategory("Todos")}
+            >
+              Todos
+            </button>
+
             {categories.map((item) => (
-              <div className="category-card" key={item}>
+              <button
+                type="button"
+                className={`category-card ${selectedCategory === item ? "category-active" : ""}`}
+                key={item}
+                onClick={() => setSelectedCategory(item)}
+              >
                 {item}
-              </div>
+              </button>
             ))}
+          </div>
+
+          <div className="product-grid" style={{ marginTop: "24px" }}>
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="product-image-wrap">
+                    <img src={product.image} alt={product.name} />
+                  </div>
+
+                  <div className="product-body">
+                    <p className="product-category">{product.category}</p>
+                    <h4>{product.name}</h4>
+                    <div className="product-row">
+                      <span className="price">₡{product.price}</span>
+                      <span className="stock">{stockLabel(product.stock)}</span>
+                    </div>
+
+                    <button
+                      className="btn btn-primary full"
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      disabled={Number(product.stock) === 0}
+                    >
+                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">
+                No hay productos disponibles en esta categoría.
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -615,7 +762,7 @@ Precio: ₡${product.price}`
                     </div>
                     <div className="admin-list-meta">
                       <span>₡{product.price}</span>
-                      <span>Stock: {product.stock}</span>
+                      <span>{stockLabel(product.stock)}</span>
                     </div>
                     <div className="admin-list-buttons">
                       <button
@@ -714,13 +861,11 @@ Precio: ₡${product.price}`
                   className="btn btn-primary"
                   type="button"
                   onClick={async () => {
-                    const ok = await saveOrder("whatsapp");
-                    if (!ok) return;
+                    const result = await createOrder("whatsapp");
+                    if (!result) return;
 
-                    window.open(
-                      `https://wa.me/50670477509?text=${whatsappCartMessage}`,
-                      "_blank"
-                    );
+                    const message = buildOrderWhatsappMessage(result);
+                    window.open(`https://wa.me/50670477509?text=${message}`, "_blank");
                   }}
                 >
                   Pedir por WhatsApp
@@ -730,13 +875,19 @@ Precio: ₡${product.price}`
                   className="btn btn-primary"
                   type="button"
                   onClick={async () => {
-                    const ok = await saveOrder("sinpe");
-                    if (!ok) return;
+                    const result = await createOrder("sinpe");
+                    if (!result) return;
 
                     alert(
-                      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
-                        cartTotal +
-                        "\n\nEnviá comprobante por WhatsApp"
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+SINPE:
+7047-7509
+
+Enviá comprobante por WhatsApp`
                     );
                   }}
                 >
@@ -747,12 +898,17 @@ Precio: ₡${product.price}`
                   className="btn btn-secondary"
                   type="button"
                   onClick={async () => {
-                    const ok = await saveOrder("transferencia");
-                    if (!ok) return;
+                    const result = await createOrder("transferencia");
+                    if (!result) return;
 
                     alert(
-                      "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
-                        cartTotal
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+Banco: BAC
+Cuenta: 945904472`
                     );
                   }}
                 >
@@ -763,10 +919,17 @@ Precio: ₡${product.price}`
                   className="btn btn-primary"
                   type="button"
                   onClick={async () => {
-                    const ok = await saveOrder("tarjeta");
-                    if (!ok) return;
+                    const result = await createOrder("tarjeta");
+                    if (!result) return;
 
-                    alert("Próximamente pago con tarjeta");
+                    alert(
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+Próximamente pago con tarjeta`
+                    );
                   }}
                 >
                   Pagar con tarjeta
@@ -776,6 +939,15 @@ Precio: ₡${product.price}`
           </div>
         </div>
       ) : null}
+
+      <a
+        href="https://wa.me/50670477509"
+        target="_blank"
+        rel="noreferrer"
+        className="whatsapp-float"
+      >
+        💬
+      </a>
 
       <footer className="footer">
         <div className="container footer-inner">
