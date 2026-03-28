@@ -75,7 +75,26 @@ export default function App() {
       .from("Productos")
       .select("*")
       .order("created_at", { ascending: false });
+async function saveOrder(method) {
+  const { error } = await supabase.from("Pedidos").insert([
+    {
+      customer_name: "Cliente web",
+      customer_phone: "No definido",
+      items: cart,
+      total: cartTotal,
+      payment_method: method,
+      status: "pendiente",
+    },
+  ]);
 
+  if (error) {
+    console.error(error);
+    alert("Error guardando el pedido");
+    return false;
+  }
+
+  return true;
+}
     if (error) {
       console.error(error);
       setMessage("No se pudieron cargar los productos.");
@@ -673,7 +692,7 @@ Precio: ₡${product.price}`
         <div className="cart-footer-buttons">
           <button className="btn btn-secondary" onClick={clearCart}>
             Vaciar carrito
-          <button
+         <button
   className="btn btn-primary"
   type="button"
   onClick={async () => {
@@ -687,38 +706,50 @@ Precio: ₡${product.price}`
   }}
 >
   Pedir por WhatsApp
+<button
+  className="btn btn-primary"
+  type="button"
+  onClick={async () => {
+    const ok = await saveOrder("sinpe");
+    if (!ok) return;
+
+    alert(
+      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
+        cartTotal +
+        "\n\nEnviá comprobante por WhatsApp"
+    );
+  }}
+>
+  Pagar con SINPE
 </button>
-            className="btn btn-primary"
-            onClick={() =>
-              alert(
-                "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
-                  cartTotal +
-                  "\n\nEnviá comprobante por WhatsApp"
-              )
-            }
-          >
-            Pagar con SINPE
-          </button>
 
           <button
-            className="btn btn-secondary"
-            onClick={() =>
-              alert(
-                "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
-                  cartTotal
-              )
-            }
-          >
-            Transferencia
-          </button>
+  className="btn btn-secondary"
+  type="button"
+  onClick={async () => {
+    const ok = await saveOrder("transferencia");
+    if (!ok) return;
 
-          <a
-            className="btn btn-primary"
-            href="https://TU_LINK_DE_PAGO"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Pagar con tarjeta
+    alert(
+      "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
+        cartTotal
+    );
+  }}
+>
+  Transferencia
+</button>
+       <button
+  className="btn btn-primary"
+  type="button"
+  onClick={async () => {
+    const ok = await saveOrder("tarjeta");
+    if (!ok) return;
+
+    alert("Próximamente pago con tarjeta");
+  }}
+>
+  Pagar con tarjeta
+</button>
           </a>
         </div>
       </div>
