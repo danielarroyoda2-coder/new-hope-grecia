@@ -1669,3 +1669,15 @@ img {
     flex-direction: column;
   }
 }
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #25d366;
+  color: white;
+  font-size: 28px;
+  padding: 16px;
+  border-radius: 50%;
+  text-decoration: none;
+  z-index: 999;
+}
