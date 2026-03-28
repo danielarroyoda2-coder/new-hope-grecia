@@ -75,33 +75,34 @@ export default function App() {
       .from("Productos")
       .select("*")
       .order("created_at", { ascending: false });
-    
-async function saveOrder(method) {
-  const { error } = await supabase.from("Pedidos").insert([
-    {
-      customer_name: "Cliente web",
-      customer_phone: "No definido",
-      items: cart,
-      total: cartTotal,
-      payment_method: method,
-      status: "pendiente",
-    },
-  ]);
 
-  if (error) {
-    console.error(error);
-    alert("Error guardando el pedido");
-    return false;
-  }
-
-  return true;
-}
     if (error) {
       console.error(error);
       setMessage("No se pudieron cargar los productos.");
     } else {
       setProducts(data || []);
     }
+  }
+
+  async function saveOrder(method) {
+    const { error } = await supabase.from("Pedidos").insert([
+      {
+        customer_name: "Cliente web",
+        customer_phone: "No definido",
+        items: cart,
+        total: cartTotal,
+        payment_method: method,
+        status: "pendiente",
+      },
+    ]);
+
+    if (error) {
+      console.error(error);
+      alert("Error guardando el pedido");
+      return false;
+    }
+
+    return true;
   }
 
   function handleChange(e) {
@@ -251,7 +252,7 @@ async function saveOrder(method) {
       if (existing) {
         return current.map((item) =>
           item.id === product.id
-            ? { ...item, qty: Math.min(item.qty + 1, product.stock) }
+            ? { ...item, qty: Math.min(item.qty + 1, item.stock) }
             : item
         );
       }
@@ -301,7 +302,8 @@ async function saveOrder(method) {
     [cart]
   );
 
-  const isAllowedUser = session && allowedEmails.includes((userEmail || "").toLowerCase());
+  const isAllowedUser =
+    session && allowedEmails.includes((userEmail || "").toLowerCase());
 
   const whatsappCartMessage = encodeURIComponent(
     cart.length
@@ -327,7 +329,7 @@ async function saveOrder(method) {
               <a href="#admin">Administrar</a>
             </nav>
 
-            <button className="cart-button" onClick={() => setCartOpen(true)}>
+            <button className="cart-button" type="button" onClick={() => setCartOpen(true)}>
               Carrito ({cartCount})
             </button>
           </div>
@@ -643,141 +645,150 @@ Precio: ₡${product.price}`
         </section>
       ) : null}
 
-   {cartOpen ? (
-  <div className="cart-overlay" onClick={() => setCartOpen(false)}>
-    <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
-      <div className="cart-header">
-        <h3>Tu carrito</h3>
-        <button className="cart-close" onClick={() => setCartOpen(false)}>
-          ✕
-        </button>
-      </div>
+      {cartOpen ? (
+        <div className="cart-overlay" onClick={() => setCartOpen(false)}>
+          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <h3>Tu carrito</h3>
+              <button
+                className="cart-close"
+                type="button"
+                onClick={() => setCartOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
 
-      <div className="cart-body">
-        {cart.length === 0 ? (
-          <div className="empty-state">Tu carrito está vacío.</div>
-        ) : (
-          cart.map((item) => (
-            <div className="cart-item" key={item.id}>
-              <img src={item.image} alt={item.name} />
-              <div className="cart-item-info">
-                <strong>{item.name}</strong>
-                <span>₡{item.price}</span>
-                <span>Stock: {item.stock}</span>
+            <div className="cart-body">
+              {cart.length === 0 ? (
+                <div className="empty-state">Tu carrito está vacío.</div>
+              ) : (
+                cart.map((item) => (
+                  <div className="cart-item" key={item.id}>
+                    <img src={item.image} alt={item.name} />
+                    <div className="cart-item-info">
+                      <strong>{item.name}</strong>
+                      <span>₡{item.price}</span>
+                      <span>Stock: {item.stock}</span>
+                    </div>
+
+                    <div className="cart-item-actions">
+                      <div className="qty-box">
+                        <button type="button" onClick={() => decreaseQty(item.id)}>
+                          -
+                        </button>
+                        <span>{item.qty}</span>
+                        <button type="button" onClick={() => increaseQty(item.id)}>
+                          +
+                        </button>
+                      </div>
+                      <button
+                        className="remove-btn"
+                        type="button"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="cart-footer">
+              <div className="cart-total">
+                <strong>Total:</strong>
+                <span>₡{cartTotal}</span>
               </div>
 
-              <div className="cart-item-actions">
-                <div className="qty-box">
-                  <button onClick={() => decreaseQty(item.id)}>-</button>
-                  <span>{item.qty}</span>
-                  <button onClick={() => increaseQty(item.id)}>+</button>
-                </div>
+              <div className="cart-footer-buttons">
                 <button
-                  className="remove-btn"
-                  onClick={() => removeFromCart(item.id)}
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={clearCart}
                 >
-                  Quitar
+                  Vaciar carrito
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const ok = await saveOrder("whatsapp");
+                    if (!ok) return;
+
+                    window.open(
+                      `https://wa.me/50670477509?text=${whatsappCartMessage}`,
+                      "_blank"
+                    );
+                  }}
+                >
+                  Pedir por WhatsApp
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const ok = await saveOrder("sinpe");
+                    if (!ok) return;
+
+                    alert(
+                      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
+                        cartTotal +
+                        "\n\nEnviá comprobante por WhatsApp"
+                    );
+                  }}
+                >
+                  Pagar con SINPE
+                </button>
+
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={async () => {
+                    const ok = await saveOrder("transferencia");
+                    if (!ok) return;
+
+                    alert(
+                      "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
+                        cartTotal
+                    );
+                  }}
+                >
+                  Transferencia
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const ok = await saveOrder("tarjeta");
+                    if (!ok) return;
+
+                    alert("Próximamente pago con tarjeta");
+                  }}
+                >
+                  Pagar con tarjeta
                 </button>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        </div>
+      ) : null}
 
-    <div className="cart-footer">
-  <div className="cart-total">
-    <strong>Total:</strong>
-    <span>₡{cartTotal}</span>
-  </div>
-
-  <div className="cart-footer-buttons">
-    <button
-      className="btn btn-secondary"
-      type="button"
-      onClick={clearCart}
-    >
-      Vaciar carrito
-    </button>
-
-    <button
-      className="btn btn-primary"
-      type="button"
-      onClick={async () => {
-        const ok = await saveOrder("whatsapp");
-        if (!ok) return;
-
-        window.open(
-          `https://wa.me/50670477509?text=${whatsappCartMessage}`,
-          "_blank"
-        );
-      }}
-    >
-      Pedir por WhatsApp
-    </button>
-
-    <button
-  className="btn btn-primary"
-  type="button"
-  onClick={async () => {
-    alert("click SINPE");
-    const ok = await saveOrder("sinpe");
-    if (!ok) return;
-
-    alert(
-      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
-        cartTotal +
-        "\n\nEnviá comprobante por WhatsApp"
-    );
-  }}
->
-  Pagar con SINPE
-</button>
-
-    <button
-      className="btn btn-secondary"
-      type="button"
-      onClick={async () => {
-        const ok = await saveOrder("transferencia");
-        if (!ok) return;
-
-        alert(
-          "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
-            cartTotal
-        );
-      }}
-    >
-      Transferencia
-    </button>
-
-    <button
-      className="btn btn-primary"
-      type="button"
-      onClick={async () => {
-        const ok = await saveOrder("tarjeta");
-        if (!ok) return;
-
-        alert("Próximamente pago con tarjeta");
-      }}
-    >
-      Pagar con tarjeta
-    </button>
-  </div>
-</div>
- </div>
-      </div>
-    ) : null}
-<footer className="footer">
-  <div className="container footer-inner">
-    <div>
-      <strong>Boutique New Hope Grecia</strong>
-      <p>Moda femenina y masculina con estilo, color y elegancia.</p>
+      <footer className="footer">
+        <div className="container footer-inner">
+          <div>
+            <strong>Boutique New Hope Grecia</strong>
+            <p>Moda femenina y masculina con estilo, color y elegancia.</p>
+          </div>
+          <div>
+            <p>Grecia, Costa Rica</p>
+            <p>WhatsApp y pagos reales próximamente</p>
+          </div>
+        </div>
+      </footer>
     </div>
-    <div>
-      <p>Grecia, Costa Rica</p>
-      <p>WhatsApp y pagos reales próximamente</p>
-    </div>
-  </div>
-</footer>
-</div>
-);
+  );
 }
