@@ -683,79 +683,87 @@ Precio: ₡${product.price}`
         )}
       </div>
 
-      <div className="cart-footer">
-        <div className="cart-total">
-          <strong>Total:</strong>
-          <span>₡{cartTotal}</span>
-        </div>
-
-        <div className="cart-footer-buttons">
-          <button className="btn btn-secondary" onClick={clearCart}>
-            Vaciar carrito
-         <button
-  className="btn btn-primary"
-  type="button"
-  onClick={async () => {
-    const ok = await saveOrder("whatsapp");
-    if (!ok) return;
-
-    window.open(
-      `https://wa.me/50670477509?text=${whatsappCartMessage}`,
-      "_blank"
-    );
-  }}
->
-  Pedir por WhatsApp
-<button
-  className="btn btn-primary"
-  type="button"
-  onClick={async () => {
-    const ok = await saveOrder("sinpe");
-    if (!ok) return;
-
-    alert(
-      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
-        cartTotal +
-        "\n\nEnviá comprobante por WhatsApp"
-    );
-  }}
->
-  Pagar con SINPE
-</button>
-
-          <button
-  className="btn btn-secondary"
-  type="button"
-  onClick={async () => {
-    const ok = await saveOrder("transferencia");
-    if (!ok) return;
-
-    alert(
-      "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
-        cartTotal
-    );
-  }}
->
-  Transferencia
-</button>
-       <button
-  className="btn btn-primary"
-  type="button"
-  onClick={async () => {
-    const ok = await saveOrder("tarjeta");
-    if (!ok) return;
-
-    alert("Próximamente pago con tarjeta");
-  }}
->
-  Pagar con tarjeta
-</button>
-          </a>
-        </div>
-      </div>
-    </div>
+    <div className="cart-footer">
+  <div className="cart-total">
+    <strong>Total:</strong>
+    <span>₡{cartTotal}</span>
   </div>
-) : null}
+
+  <div className="cart-footer-buttons">
+    <button
+      className="btn btn-secondary"
+      type="button"
+      onClick={clearCart}
+    >
+      Vaciar carrito
+    </button>
+
+    <button
+      className="btn btn-primary"
+      type="button"
+      onClick={async () => {
+        const ok = await saveOrder("whatsapp");
+        if (!ok) return;
+
+        window.open(
+          `https://wa.me/50670477509?text=${whatsappCartMessage}`,
+          "_blank"
+        );
+      }}
+    >
+      Pedir por WhatsApp
+    </button>
+
+    <button
+      className="btn btn-primary"
+      type="button"
+      onClick={async () => {
+        const ok = await saveOrder("sinpe");
+        if (!ok) return;
+
+        alert(
+          "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
+            cartTotal +
+            "\n\nEnviá comprobante por WhatsApp"
+        );
+      }}
+    >
+      Pagar con SINPE
+    </button>
+
+    <button
+      className="btn btn-secondary"
+      type="button"
+      onClick={async () => {
+        const ok = await saveOrder("transferencia");
+        if (!ok) return;
+
+        alert(
+          "Transferencia bancaria:\n\nBanco: BAC\nCuenta: 945904472\nMonto: ₡" +
+            cartTotal
+        );
+      }}
+    >
+      Transferencia
+    </button>
+
+    <button
+      className="btn btn-primary"
+      type="button"
+      onClick={async () => {
+        const ok = await saveOrder("tarjeta");
+        if (!ok) return;
+
+        alert("Próximamente pago con tarjeta");
+      }}
+    >
+      Pagar con tarjeta
+    </button>
+  </div>
+</div>
+ </div>
+      </div>
+    ) : null}
 <footer className="footer">
   <div className="container footer-inner">
     <div>
