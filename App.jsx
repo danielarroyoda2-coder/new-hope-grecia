@@ -1,9 +1,11 @@
- target="_blank"
-        rel="noreferrer"
-        className="whatsapp-float"
-      >
-        💬
-      </a>
+<a
+  href="https://wa.me/50670477509"
+  target="_blank"
+  rel="noreferrer"
+  className="whatsapp-float"
+>
+  💬
+</a>
 
       <footer className="footer">import React from "react";
 import { useEffect, useMemo, useState } from "react";
