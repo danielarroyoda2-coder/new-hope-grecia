@@ -75,6 +75,7 @@ export default function App() {
       .from("Productos")
       .select("*")
       .order("created_at", { ascending: false });
+    
 async function saveOrder(method) {
   const { error } = await supabase.from("Pedidos").insert([
     {
@@ -715,21 +716,22 @@ Precio: ₡${product.price}`
     </button>
 
     <button
-      className="btn btn-primary"
-      type="button"
-      onClick={async () => {
-        const ok = await saveOrder("sinpe");
-        if (!ok) return;
+  className="btn btn-primary"
+  type="button"
+  onClick={async () => {
+    alert("click SINPE");
+    const ok = await saveOrder("sinpe");
+    if (!ok) return;
 
-        alert(
-          "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
-            cartTotal +
-            "\n\nEnviá comprobante por WhatsApp"
-        );
-      }}
-    >
-      Pagar con SINPE
-    </button>
+    alert(
+      "SINPE:\n\nNúmero: 7047-7509\nMonto: ₡" +
+        cartTotal +
+        "\n\nEnviá comprobante por WhatsApp"
+    );
+  }}
+>
+  Pagar con SINPE
+</button>
 
     <button
       className="btn btn-secondary"
