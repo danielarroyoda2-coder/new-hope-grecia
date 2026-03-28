@@ -1,4 +1,11 @@
-import React from "react";
+ target="_blank"
+        rel="noreferrer"
+        className="whatsapp-float"
+      >
+        💬
+      </a>
+
+      <footer className="footer">import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 
@@ -895,7 +902,7 @@ Enviá comprobante por WhatsApp`
                 </button>
 
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-transfer"
                   type="button"
                   onClick={async () => {
                     const result = await createOrder("transferencia");
@@ -942,14 +949,6 @@ Próximamente pago con tarjeta`
 
       <a
         href="https://wa.me/50670477509"
-        target="_blank"
-        rel="noreferrer"
-        className="whatsapp-float"
-      >
-        💬
-      </a>
-
-      <footer className="footer">
         <div className="container footer-inner">
           <div>
             <strong>Boutique New Hope Grecia</strong>
@@ -964,3 +963,5 @@ Próximamente pago con tarjeta`
     </div>
   );
 }
+
+       
