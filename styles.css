@@ -1,746 +1,1056 @@
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #1f2937;
-  background: #ffffff;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-img {
-  display: block;
-  width: 100%;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-.site {
-  min-height: 100vh;
-}
-
-.container {
-  width: min(1120px, calc(100% - 32px));
-  margin: 0 auto;
-}
-
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid #f1f1f1;
-}
-
-.topbar-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 18px 0;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-
-.brand {
-  margin: 0;
-  font-size: 28px;
-  color: #b91c1c;
-}
-
-.nav {
-  display: flex;
-  gap: 20px;
-  font-weight: 600;
-  color: #4b5563;
-}
-
-.nav a:hover {
-  color: #b91c1c;
-}
-
-.hero {
-  background: linear-gradient(135deg, #fff1f2, #ffffff);
-  padding: 72px 0 48px;
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: 1.3fr 0.7fr;
-  gap: 28px;
-  align-items: stretch;
-}
-
-.hero-copy,
-.hero-card {
-  border-radius: 28px;
-  padding: 36px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.07);
-}
-
-.hero-copy {
-  background: linear-gradient(135deg, #dc2626, #ef4444);
-  color: white;
-}
-
-.hero-copy h2 {
-  margin: 14px 0;
-  font-size: 48px;
-  line-height: 1.05;
-}
-
-.hero-copy p {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.badge {
-  display: inline-block;
-  padding: 10px 16px;
-  background: white;
-  color: #dc2626;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.hero-actions,
-.admin-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 28px;
-}
-
-.hero-card {
-  background: white;
-  display: grid;
-  gap: 16px;
-  align-content: center;
-}
-
-.hero-stat {
-  padding: 18px;
-  border-radius: 20px;
-  background: #fff5f5;
-  border: 1px solid #ffe4e6;
-}
-
-.hero-stat strong {
-  display: block;
-  font-size: 20px;
-  color: #b91c1c;
-  margin-bottom: 6px;
-}
-
-.hero-stat span {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  padding: 14px 22px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #b91c1c;
-}
-
-.btn-secondary {
-  background: white;
-  color: #dc2626;
-  border: 2px solid #fecaca;
-}
-
-.btn-secondary:hover {
-  background: #fff5f5;
-}
-
-.btn-transfer {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-transfer:hover {
-  background: #b91c1c;
-}
-
-.full {
-  width: 100%;
-}
-
-.section {
-  padding: 64px 0;
-}
-
-.section.light {
-  background: #fafafa;
-}
-
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
-.section-kicker {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: #dc2626;
-}
-
-.section-head h3,
-.admin-box h3 {
-  margin: 0;
-  font-size: 34px;
-  color: #111827;
-}
-
-.soft-pill {
-  background: #fee2e2;
-  color: #b91c1c;
-  padding: 10px 14px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 22px;
-}
-
-.product-card {
-  background: white;
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
-}
-
-.product-image-wrap {
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  background: #f5f5f5;
-}
-
-.product-image-wrap img {
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-body {
-  padding: 18px;
-}
-
-.product-category {
-  margin: 0 0 8px;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.product-body h4 {
-  margin: 0 0 14px;
-  font-size: 20px;
-}
-
-.product-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.price {
-  color: #b91c1c;
-  font-weight: 800;
-  font-size: 22px;
-}
-
-.stock {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.category-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
-
-.category-card {
-  background: white;
-  border: 1px solid #f1f1f1;
-  border-radius: 22px;
-  padding: 24px;
-  text-align: center;
-  font-weight: 700;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.category-card:hover {
-  border-color: #fecaca;
-  transform: translateY(-1px);
-}
-
-.category-active {
-  background: #dc2626;
-  color: white;
-  border-color: #dc2626;
-}
-
-.admin-box {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 24px;
-  padding: 32px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #fff5f5, #ffffff);
-  border: 1px solid #ffe4e6;
-}
-
-.admin-box-full {
-  grid-template-columns: 1fr;
-}
-
-.admin-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.admin-text {
-  margin: 12px 0 0;
-  color: #4b5563;
-  font-size: 17px;
-  line-height: 1.7;
-}
-
-.admin-form {
-  margin-top: 10px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-  margin-top: 20px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.field label {
-  font-size: 14px;
-  font-weight: 700;
-  color: #374151;
-}
-
-.field input,
-.field select {
-  width: 100%;
-  border: 1px solid #f1c4c4;
-  border-radius: 16px;
-  padding: 14px 16px;
-  font-size: 15px;
-  outline: none;
-  background: white;
-}
-
-.field input:focus,
-.field select:focus {
-  border-color: #dc2626;
-}
-
-.field-full {
-  grid-column: 1 / -1;
-}
-
-.status-message {
-  margin-top: 16px;
-  font-weight: 700;
-  color: #b91c1c;
-}
-
-.admin-list {
-  display: grid;
-  gap: 14px;
-}
-
-.admin-list-item {
-  display: grid;
-  grid-template-columns: 72px 1fr auto auto;
-  gap: 16px;
-  align-items: center;
-  background: white;
-  border: 1px solid #f3e0e0;
-  border-radius: 20px;
-  padding: 14px;
-}
-
-.admin-list-item img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: 16px;
-}
-
-.admin-list-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.admin-list-info strong {
-  font-size: 18px;
-}
-
-.admin-list-info span {
-  color: #6b7280;
-}
-
-.admin-list-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  text-align: right;
-  font-weight: 700;
-  color: #b91c1c;
-}
-
-.admin-list-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.small-btn {
-  padding: 10px 16px;
-  font-size: 14px;
-}
-
-.empty-state {
-  padding: 24px;
-  border-radius: 20px;
-  background: white;
-  border: 1px dashed #e5b6b6;
-  color: #6b7280;
-}
-
-.nav-cart-wrap {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.cart-button {
-  border: none;
-  background: #dc2626;
-  color: white;
-  border-radius: 999px;
-  padding: 12px 18px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.cart-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 100;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.cart-panel {
-  width: min(520px, 100%);
-  height: 100%;
-  background: white;
-  display: flex;
-  flex-direction: column;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.12);
-}
-
-.cart-header,
-.cart-footer {
-  padding: 20px;
-}
-
-.cart-header {
-  border-bottom: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.cart-footer {
-  border-top: 1px solid #eee;
-  margin-top: auto;
-}
-
-.cart-close {
-  border: none;
-  background: transparent;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.cart-body {
-  padding: 20px;
-  overflow: auto;
-  display: grid;
-  gap: 14px;
-}
-
-.cart-item {
-  display: grid;
-  grid-template-columns: 72px 1fr auto;
-  gap: 14px;
-  align-items: center;
-  border: 1px solid #f1f1f1;
-  border-radius: 18px;
-  padding: 12px;
-}
-
-.cart-item img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  border-radius: 14px;
-}
-
-.cart-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cart-item-info span {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.cart-item-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-.qty-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.qty-box button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.remove-btn {
-  border: none;
-  background: transparent;
-  color: #b91c1c;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.cart-total {
-  display: flex;
-  justify-content: space-between;
-  font-size: 20px;
-  margin-bottom: 16px;
-}
-
-.cart-footer-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.cart-footer-buttons .btn {
-  flex: 1 1 180px;
-  text-align: center;
-}
-
-.footer {
-  border-top: 1px solid #f1f1f1;
-  padding: 28px 0;
-  background: white;
-}
-
-.footer-inner {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.footer p {
-  margin: 6px 0 0;
-  color: #6b7280;
-}
-
-.whatsapp-float {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  background: #25d366;
-  color: white;
-  font-size: 28px;
-  padding: 16px;
-  border-radius: 50%;
-  text-decoration: none;
-  z-index: 999;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
-}
-
-.whatsapp-float:hover {
-  transform: scale(1.04);
-}
-
-@media (max-width: 960px) {
-  .hero-grid,
-  .admin-box,
-  .product-grid,
-  .category-grid {
-    grid-template-columns: 1fr 1fr;
+import React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "./supabase";
+
+const categories = [
+  "Blusas",
+  "Camisas",
+  "Vestidos",
+  "Pantalones",
+  "Enaguas",
+  "Accesorios",
+  "Sombreros",
+  "Vestidos de baño",
+];
+
+const allowedEmails = [
+  "daniel.arroyo.da2@roche.com",
+  "anacatalinajimenez88@gmail.com",
+  "outlethopecr@gmail.com",
+];
+
+const initialForm = {
+  name: "",
+  price: "",
+  stock: "",
+  image: "",
+  category: "Vestidos",
+};
+
+export default function App() {
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [ordersMessage, setOrdersMessage] = useState("");
+
+  const [form, setForm] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  const [email, setEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [session, setSession] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
+
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [lastOrderSummary, setLastOrderSummary] = useState(null);
+
+  useEffect(() => {
+    getProducts();
+    getOrders();
+
+    const savedCart = localStorage.getItem("bnhg_cart");
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      const currentSession = data.session;
+      setSession(currentSession || null);
+      setUserEmail(currentSession?.user?.email || "");
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession || null);
+      setUserEmail(currentSession?.user?.email || "");
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("bnhg_cart", JSON.stringify(cart));
+  }, [cart]);
+
+  async function getProducts() {
+    const { data, error } = await supabase
+      .from("Productos")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setMessage("No se pudieron cargar los productos.");
+    } else {
+      setProducts(data || []);
+    }
   }
 
-  .topbar-inner,
-  .section-head,
-  .footer-inner {
-    flex-direction: column;
-    align-items: flex-start;
+  async function getOrders() {
+    const { data, error } = await supabase
+      .from("Pedidos")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setOrdersMessage("No se pudieron cargar los pedidos.");
+    } else {
+      setOrders(data || []);
+    }
   }
 
-  .hero-copy h2 {
-    font-size: 38px;
+  function generateOrderNumber() {
+    return `NHG-${Date.now()}`;
   }
 
-  .admin-list-item {
-    grid-template-columns: 72px 1fr;
+  async function createOrder(method) {
+    if (!cart.length) {
+      alert("El carrito está vacío.");
+      return null;
+    }
+
+    const orderNumber = generateOrderNumber();
+
+    const orderItems = cart.map((item) => ({
+      id: item.id,
+      name: item.name,
+      qty: item.qty,
+      price: Number(item.price),
+      subtotal: Number(item.price) * item.qty,
+    }));
+
+    const total = cart.reduce(
+      (sum, item) => sum + Number(item.price) * item.qty,
+      0
+    );
+
+    const { error: orderError } = await supabase.from("Pedidos").insert([
+      {
+        order_number: orderNumber,
+        customer_name: "Cliente web",
+        customer_phone: "No definido",
+        items: orderItems,
+        total,
+        payment_method: method,
+        status: "pendiente",
+      },
+    ]);
+
+    if (orderError) {
+      console.error(orderError);
+      alert("Error guardando el pedido");
+      return null;
+    }
+
+    for (const item of cart) {
+      const newStock = Math.max(Number(item.stock) - Number(item.qty), 0);
+
+      const { error: stockError } = await supabase
+        .from("Productos")
+        .update({ stock: newStock })
+        .eq("id", item.id);
+
+      if (stockError) {
+        console.error(stockError);
+      }
+    }
+
+    const summary = {
+      orderNumber,
+      method,
+      total,
+      items: orderItems,
+    };
+
+    setLastOrderSummary(summary);
+    setSuccessMessage(`Compra exitosa. Tu número de pedido es ${orderNumber}.`);
+    clearCart();
+    setCartOpen(false);
+    await getProducts();
+    await getOrders();
+
+    return summary;
   }
 
-  .admin-list-meta,
-  .admin-list-buttons {
-    text-align: left;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 640px) {
-  .hero-grid,
-  .admin-box,
-  .product-grid,
-  .category-grid,
-  .form-grid {
-    grid-template-columns: 1fr;
+  function handleChange(e) {
+    const { name, value } = e.target;
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
   }
 
-  .hero {
-    padding-top: 40px;
+  function handleEdit(product) {
+    setEditingId(product.id);
+    setForm({
+      name: product.name || "",
+      price: product.price || "",
+      stock: product.stock || "",
+      image: product.image || "",
+      category: product.category || "Vestidos",
+    });
+    setMessage("Editando producto.");
+    document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" });
   }
 
-  .hero-copy,
-  .hero-card,
-  .admin-box {
-    padding: 24px;
+  function handleCancelEdit() {
+    setEditingId(null);
+    setForm(initialForm);
+    setMessage("Edición cancelada.");
   }
 
-  .hero-copy h2 {
-    font-size: 30px;
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+
+    if (!form.name || !form.price || !form.stock || !form.image || !form.category) {
+      setMessage("Completá todos los campos.");
+      return;
+    }
+
+    setLoading(true);
+
+    if (editingId) {
+      const { error } = await supabase
+        .from("Productos")
+        .update({
+          name: form.name,
+          price: Number(form.price),
+          stock: Number(form.stock),
+          image: form.image,
+          category: form.category,
+        })
+        .eq("id", editingId);
+
+      setLoading(false);
+
+      if (error) {
+        console.error(error);
+        setMessage("Hubo un error al actualizar el producto.");
+        return;
+      }
+
+      setEditingId(null);
+      setForm(initialForm);
+      setMessage("Producto actualizado correctamente.");
+      getProducts();
+      return;
+    }
+
+    const { error } = await supabase.from("Productos").insert([
+      {
+        name: form.name,
+        price: Number(form.price),
+        stock: Number(form.stock),
+        image: form.image,
+        category: form.category,
+      },
+    ]);
+
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      setMessage("Hubo un error al guardar el producto.");
+      return;
+    }
+
+    setForm(initialForm);
+    setMessage("Producto guardado correctamente.");
+    getProducts();
   }
 
-  .section-head h3,
-  .admin-box h3 {
-    font-size: 28px;
+  async function handleDelete(id) {
+    const confirmDelete = window.confirm("¿Querés eliminar este producto?");
+    if (!confirmDelete) return;
+
+    const { error } = await supabase.from("Productos").delete().eq("id", id);
+
+    if (error) {
+      console.error(error);
+      setMessage("No se pudo eliminar el producto.");
+      return;
+    }
+
+    if (editingId === id) {
+      setEditingId(null);
+      setForm(initialForm);
+    }
+
+    setMessage("Producto eliminado correctamente.");
+    getProducts();
   }
 
-  .nav {
-    flex-wrap: wrap;
-    gap: 12px;
+  async function handleLogin(e) {
+    e.preventDefault();
+    setAuthMessage("");
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!allowedEmails.includes(cleanEmail)) {
+      setAuthMessage("Ese correo no tiene permiso para administrar.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        emailRedirectTo: "https://new-hope-grecia.vercel.app",
+      },
+    });
+
+    if (error) {
+      console.error(error);
+      setAuthMessage("No se pudo enviar el enlace al correo.");
+      return;
+    }
+
+    setAuthMessage("Te envié un enlace de ingreso a tu correo.");
   }
 
-  .nav-cart-wrap {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setAuthMessage("Sesión cerrada.");
   }
 
-  .admin-list-item,
-  .cart-item {
-    grid-template-columns: 1fr;
+  function addToCart(product) {
+    if (Number(product.stock) === 0) return;
+
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id);
+
+      if (existing) {
+        return current.map((item) =>
+          item.id === product.id
+            ? {
+                ...item,
+                qty: Math.min(item.qty + 1, Number(product.stock)),
+              }
+            : item
+        );
+      }
+
+      return [...current, { ...product, qty: 1 }];
+    });
+
+    setCartOpen(true);
   }
 
-  .admin-list-meta {
-    text-align: left;
+  function increaseQty(id) {
+    setCart((current) =>
+      current.map((item) => {
+        if (item.id !== id) return item;
+
+        return {
+          ...item,
+          qty: Math.min(item.qty + 1, Number(item.stock)),
+        };
+      })
+    );
   }
 
-  .admin-list-buttons,
-  .cart-item-actions {
-    justify-content: flex-start;
-    align-items: flex-start;
-    flex-wrap: wrap;
+  function decreaseQty(id) {
+    setCart((current) =>
+      current
+        .map((item) => {
+          if (item.id !== id) return item;
+          return { ...item, qty: item.qty - 1 };
+        })
+        .filter((item) => item.qty > 0)
+    );
   }
 
-  .cart-footer-buttons {
-    flex-direction: column;
+  function removeFromCart(id) {
+    setCart((current) => current.filter((item) => item.id !== id));
   }
+
+  function clearCart() {
+    setCart([]);
+  }
+
+  const cartCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.qty, 0),
+    [cart]
+  );
+
+  const cartTotal = useMemo(
+    () => cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0),
+    [cart]
+  );
+
+  const isAllowedUser =
+    session && allowedEmails.includes((userEmail || "").toLowerCase());
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === "Todos") return products;
+    return products.filter((product) => product.category === selectedCategory);
+  }, [products, selectedCategory]);
+
+  function stockLabel(stock) {
+    const s = Number(stock);
+    if (s === 0) return "❌ Agotado";
+    if (s <= 4) return `⚠️ Stock bajo: ${s}`;
+    return `Stock: ${s}`;
+  }
+
+  function buildOrderWhatsappMessage(orderSummary) {
+    return encodeURIComponent(
+      `Nuevo pedido 🛍️
+
+Número de pedido: ${orderSummary.orderNumber}
+Método de pago: ${orderSummary.method}
+Total: ₡${orderSummary.total}
+
+Productos:
+${orderSummary.items
+  .map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`)
+  .join("\n")}`
+    );
+  }
+
+  return (
+    <div className="site">
+      <header className="topbar">
+        <div className="container topbar-inner">
+          <div>
+            <p className="eyebrow">Grecia, Costa Rica</p>
+            <h1 className="brand">Boutique New Hope Grecia</h1>
+          </div>
+
+          <div className="nav-cart-wrap">
+            <nav className="nav">
+              <a href="#catalogo">Catálogo</a>
+              <a href="#destacados">Destacados</a>
+              <a href="#admin">Administrar</a>
+            </nav>
+
+            <button
+              className="cart-button"
+              type="button"
+              onClick={() => setCartOpen(true)}
+            >
+              Carrito ({cartCount})
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section className="hero">
+        <div className="container hero-grid">
+          <div className="hero-copy">
+            <span className="badge">Nueva colección</span>
+            <h2>Moda online con estilo profesional</h2>
+            <p>
+              Blusas, camisas de hombre y mujer, vestidos, pantalones, enaguas,
+              accesorios, sombreros y nuestro top en ventas: vestidos de baño.
+            </p>
+
+            <div className="hero-actions">
+              <a className="btn btn-primary" href="#catalogo">
+                Ver catálogo
+              </a>
+              <a className="btn btn-secondary" href="#admin">
+                Panel admin
+              </a>
+            </div>
+          </div>
+
+          <div className="hero-card">
+            <div className="hero-stat">
+              <strong>{products.length}</strong>
+              <span>Productos cargados en la base de datos</span>
+            </div>
+            <div className="hero-stat">
+              <strong>{isAllowedUser ? "Activo" : "Protegido"}</strong>
+              <span>Acceso administrativo por correo</span>
+            </div>
+            <div className="hero-stat">
+              <strong>{cartCount}</strong>
+              <span>Productos en el carrito</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {successMessage ? (
+        <section className="section">
+          <div className="container">
+            <div className="admin-box admin-box-full">
+              <div>
+                <p className="section-kicker">Compra exitosa</p>
+                <h3>{successMessage}</h3>
+                {lastOrderSummary ? (
+                  <div className="admin-text">
+                    <p><strong>Pedido:</strong> {lastOrderSummary.orderNumber}</p>
+                    <p><strong>Total:</strong> ₡{lastOrderSummary.total}</p>
+                    <p><strong>Método:</strong> {lastOrderSummary.method}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {lastOrderSummary ? (
+                <div className="admin-actions">
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    onClick={() => {
+                      const msg = buildOrderWhatsappMessage(lastOrderSummary);
+                      window.open(`https://wa.me/50670477509?text=${msg}`, "_blank");
+                    }}
+                  >
+                    Enviar pedido por WhatsApp
+                  </button>
+
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => setSuccessMessage("")}
+                  >
+                    Cerrar mensaje
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="section" id="destacados">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="section-kicker">Más vendidos</p>
+              <h3>Productos destacados</h3>
+            </div>
+            <span className="soft-pill">Top: vestidos de baño</span>
+          </div>
+
+          <div className="product-grid">
+            {products.length > 0 ? (
+              products.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="product-image-wrap">
+                    <img src={product.image} alt={product.name} />
+                  </div>
+
+                  <div className="product-body">
+                    <p className="product-category">{product.category}</p>
+                    <h4>{product.name}</h4>
+                    <div className="product-row">
+                      <span className="price">₡{product.price}</span>
+                      <span className="stock">{stockLabel(product.stock)}</span>
+                    </div>
+
+                    <button
+                      className="btn btn-primary full"
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      disabled={Number(product.stock) === 0}
+                    >
+                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">
+                Todavía no hay productos cargados. Usá el panel de administración
+                de abajo para agregar el primero.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="section light" id="catalogo">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="section-kicker">Catálogo</p>
+              <h3>Categorías principales</h3>
+            </div>
+          </div>
+
+          <div className="category-grid">
+            <button
+              type="button"
+              className={`category-card ${selectedCategory === "Todos" ? "category-active" : ""}`}
+              onClick={() => setSelectedCategory("Todos")}
+            >
+              Todos
+            </button>
+
+            {categories.map((item) => (
+              <button
+                type="button"
+                className={`category-card ${selectedCategory === item ? "category-active" : ""}`}
+                key={item}
+                onClick={() => setSelectedCategory(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="product-grid" style={{ marginTop: "24px" }}>
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="product-image-wrap">
+                    <img src={product.image} alt={product.name} />
+                  </div>
+
+                  <div className="product-body">
+                    <p className="product-category">{product.category}</p>
+                    <h4>{product.name}</h4>
+                    <div className="product-row">
+                      <span className="price">₡{product.price}</span>
+                      <span className="stock">{stockLabel(product.stock)}</span>
+                    </div>
+
+                    <button
+                      className="btn btn-primary full"
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      disabled={Number(product.stock) === 0}
+                    >
+                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">
+                No hay productos disponibles en esta categoría.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="section" id="admin">
+        <div className="container">
+          {!isAllowedUser ? (
+            <div className="admin-box admin-box-full">
+              <div>
+                <p className="section-kicker">Acceso administrativo</p>
+                <h3>Ingresar con correo</h3>
+                <p className="admin-text">
+                  Solo los correos autorizados pueden entrar al panel de administración.
+                </p>
+              </div>
+
+              <form className="admin-form" onSubmit={handleLogin}>
+                <div className="form-grid">
+                  <div className="field field-full">
+                    <label>Correo autorizado</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tucorreo@gmail.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-actions">
+                  <button className="btn btn-primary" type="submit">
+                    Enviar enlace de ingreso
+                  </button>
+                </div>
+
+                {authMessage ? <p className="status-message">{authMessage}</p> : null}
+              </form>
+            </div>
+          ) : (
+            <div className="admin-box admin-box-full">
+              <div className="admin-top-row">
+                <div>
+                  <p className="section-kicker">Administración</p>
+                  <h3>{editingId ? "Editar producto" : "Panel de productos"}</h3>
+                  <p className="admin-text">
+                    Sesión iniciada como <strong>{userEmail}</strong>.
+                  </p>
+                </div>
+
+                <button className="btn btn-secondary" type="button" onClick={handleLogout}>
+                  Cerrar sesión
+                </button>
+              </div>
+
+              <form className="admin-form" onSubmit={handleSubmit}>
+                <div className="form-grid">
+                  <div className="field">
+                    <label>Nombre del producto</label>
+                    <input
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      placeholder="Ej. Vestido rojo"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label>Precio</label>
+                    <input
+                      name="price"
+                      type="number"
+                      value={form.price}
+                      onChange={handleChange}
+                      placeholder="18900"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label>Stock</label>
+                    <input
+                      name="stock"
+                      type="number"
+                      value={form.stock}
+                      onChange={handleChange}
+                      placeholder="10"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label>Categoría</label>
+                    <select
+                      name="category"
+                      value={form.category}
+                      onChange={handleChange}
+                    >
+                      {categories.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field field-full">
+                    <label>URL de imagen</label>
+                    <input
+                      name="image"
+                      value={form.image}
+                      onChange={handleChange}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-actions">
+                  <button className="btn btn-primary" type="submit" disabled={loading}>
+                    {loading
+                      ? "Guardando..."
+                      : editingId
+                      ? "Guardar cambios"
+                      : "Guardar producto"}
+                  </button>
+
+                  {editingId ? (
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      onClick={handleCancelEdit}
+                    >
+                      Cancelar edición
+                    </button>
+                  ) : (
+                    <a className="btn btn-secondary" href="#destacados">
+                      Ver productos
+                    </a>
+                  )}
+                </div>
+
+                {message ? <p className="status-message">{message}</p> : null}
+              </form>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {isAllowedUser ? (
+        <section className="section light">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Base de datos</p>
+                <h3>Productos cargados</h3>
+              </div>
+            </div>
+
+            <div className="admin-list">
+              {products.length > 0 ? (
+                products.map((product) => (
+                  <div className="admin-list-item" key={product.id}>
+                    <img src={product.image} alt={product.name} />
+                    <div className="admin-list-info">
+                      <strong>{product.name}</strong>
+                      <span>{product.category}</span>
+                    </div>
+                    <div className="admin-list-meta">
+                      <span>₡{product.price}</span>
+                      <span>{stockLabel(product.stock)}</span>
+                    </div>
+                    <div className="admin-list-buttons">
+                      <button
+                        className="btn btn-secondary small-btn"
+                        type="button"
+                        onClick={() => handleEdit(product)}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn btn-primary small-btn"
+                        type="button"
+                        onClick={() => handleDelete(product.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  Aún no hay productos guardados en la base de datos.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isAllowedUser ? (
+        <section className="section">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Pedidos</p>
+                <h3>Pedidos recibidos</h3>
+              </div>
+            </div>
+
+            {ordersMessage ? <p className="status-message">{ordersMessage}</p> : null}
+
+            <div className="admin-list">
+              {orders.length > 0 ? (
+                orders.map((order) => (
+                  <div className="admin-list-item" key={order.id}>
+                    <div className="admin-list-info">
+                      <strong>{order.order_number || "Sin número"}</strong>
+                      <span>Método: {order.payment_method}</span>
+                      <span>Estado: {order.status}</span>
+                    </div>
+
+                    <div className="admin-list-meta">
+                      <span>Total: ₡{order.total}</span>
+                      <span>
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleString()
+                          : ""}
+                      </span>
+                    </div>
+
+                    <div className="admin-list-info">
+                      <strong>Productos</strong>
+                      {Array.isArray(order.items) ? (
+                        order.items.map((item, index) => (
+                          <span key={index}>
+                            {item.name} x{item.qty} = ₡{item.subtotal}
+                          </span>
+                        ))
+                      ) : (
+                        <span>Sin detalle</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  Aún no hay pedidos registrados.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {cartOpen ? (
+        <div className="cart-overlay" onClick={() => setCartOpen(false)}>
+          <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="cart-header">
+              <h3>Tu carrito</h3>
+              <button
+                className="cart-close"
+                type="button"
+                onClick={() => setCartOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="cart-body">
+              {cart.length === 0 ? (
+                <div className="empty-state">Tu carrito está vacío.</div>
+              ) : (
+                cart.map((item) => (
+                  <div className="cart-item" key={item.id}>
+                    <img src={item.image} alt={item.name} />
+                    <div className="cart-item-info">
+                      <strong>{item.name}</strong>
+                      <span>₡{item.price}</span>
+                      <span>Stock: {item.stock}</span>
+                    </div>
+
+                    <div className="cart-item-actions">
+                      <div className="qty-box">
+                        <button type="button" onClick={() => decreaseQty(item.id)}>
+                          -
+                        </button>
+                        <span>{item.qty}</span>
+                        <button type="button" onClick={() => increaseQty(item.id)}>
+                          +
+                        </button>
+                      </div>
+                      <button
+                        className="remove-btn"
+                        type="button"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="cart-footer">
+              <div className="cart-total">
+                <strong>Total:</strong>
+                <span>₡{cartTotal}</span>
+              </div>
+
+              <div className="cart-footer-buttons">
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={clearCart}
+                >
+                  Vaciar carrito
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const result = await createOrder("whatsapp");
+                    if (!result) return;
+
+                    const msg = buildOrderWhatsappMessage(result);
+                    window.open(`https://wa.me/50670477509?text=${msg}`, "_blank");
+                  }}
+                >
+                  Pedir por WhatsApp
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const result = await createOrder("sinpe");
+                    if (!result) return;
+
+                    alert(
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+SINPE:
+7047-7509
+
+Enviá comprobante por WhatsApp`
+                    );
+                  }}
+                >
+                  Pagar con SINPE
+                </button>
+
+                <button
+                  className="btn btn-transfer"
+                  type="button"
+                  onClick={async () => {
+                    const result = await createOrder("transferencia");
+                    if (!result) return;
+
+                    alert(
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+Banco: BAC
+Cuenta: 945904472`
+                    );
+                  }}
+                >
+                  Transferencia
+                </button>
+
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    const result = await createOrder("tarjeta");
+                    if (!result) return;
+
+                    alert(
+                      `Pedido creado ✅
+
+Número: ${result.orderNumber}
+Total: ₡${result.total}
+
+Próximamente pago con tarjeta`
+                    );
+                  }}
+                >
+                  Pagar con tarjeta
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <a
+        href="https://wa.me/50670477509"
+        target="_blank"
+        rel="noreferrer"
+        className="whatsapp-float"
+      >
+        💬
+      </a>
+
+      <footer className="footer">
+        <div className="container footer-inner">
+          <div>
+            <strong>Boutique New Hope Grecia</strong>
+            <p>Moda femenina y masculina con estilo, color y elegancia.</p>
+          </div>
+          <div>
+            <p>Grecia, Costa Rica</p>
+            <p>WhatsApp y pagos reales próximamente</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }
