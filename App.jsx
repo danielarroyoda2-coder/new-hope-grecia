@@ -1,3 +1,6 @@
+import React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "./supabase";
 <a
   href="https://wa.me/50670477509"
   target="_blank"
