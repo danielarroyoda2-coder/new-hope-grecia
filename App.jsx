@@ -244,13 +244,27 @@ export default function App() {
   }
 
   function normalizePhone(value) {
-    return value.replace(/[^\d]/g, "");
+    return String(value || "").replace(/[^\d]/g, "");
   }
 
   function formatPhoneDisplay(value) {
     const digits = normalizePhone(value).slice(0, 8);
     if (digits.length <= 4) return digits;
     return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  function normalizeImageUrl(url) {
+    if (!url) return fallbackImage;
+
+    const clean = String(url).trim();
+
+    if (!clean) return fallbackImage;
+
+    if (clean.startsWith("http://")) {
+      return clean.replace("http://", "https://");
+    }
+
+    return clean;
   }
 
   function validateCheckout(data = checkoutData) {
@@ -312,11 +326,13 @@ export default function App() {
     const shippingCost = getShippingCost(checkoutData.deliveryType);
     const total = subtotal + shippingCost;
 
+    const customerPhoneFormatted = formatPhoneDisplay(checkoutData.customerPhone);
+
     const { error: orderError } = await supabase.from("Pedidos").insert([
       {
         order_number: orderNumber,
         customer_name: checkoutData.customerName.trim(),
-        customer_phone: formatPhoneDisplay(checkoutData.customerPhone),
+        customer_phone: customerPhoneFormatted,
         items: orderItems,
         total,
         payment_method: method,
@@ -361,7 +377,7 @@ export default function App() {
           ? ""
           : checkoutData.deliveryAddress.trim(),
       customerName: checkoutData.customerName.trim(),
-      customerPhone: formatPhoneDisplay(checkoutData.customerPhone),
+      customerPhone: customerPhoneFormatted,
       items: orderItems,
     };
 
@@ -411,16 +427,14 @@ export default function App() {
 
     if (name === "customerPhone") {
       const formatted = formatPhoneDisplay(value);
-      setCheckoutData((current) => ({
-        ...current,
-        [name]: formatted,
-      }));
+      const nextData = {
+        ...checkoutData,
+        customerPhone: formatted,
+      };
+      setCheckoutData(nextData);
 
       if (checkoutErrors.customerPhone) {
-        validateCheckout({
-          ...checkoutData,
-          customerPhone: formatted,
-        });
+        validateCheckout(nextData);
       }
       return;
     }
@@ -430,17 +444,14 @@ export default function App() {
       [name]: value,
     };
 
-    setCheckoutData(nextData);
-
-    if (checkoutErrors[name]) {
-      validateCheckout(nextData);
+    if (name === "deliveryType" && value === "retiro_local") {
+      nextData.deliveryAddress = "";
     }
 
-    if (name === "deliveryType" && value === "retiro_local") {
-      setCheckoutErrors((current) => ({
-        ...current,
-        deliveryAddress: "",
-      }));
+    setCheckoutData(nextData);
+
+    if (checkoutErrors[name] || name === "deliveryType") {
+      validateCheckout(nextData);
     }
   }
 
@@ -765,9 +776,11 @@ ${orderSummary.items
       <article className="product-card" key={product.id}>
         <div className="product-image-wrap">
           <img
-            src={product.image || fallbackImage}
+            src={normalizeImageUrl(product.image)}
             alt={product.name}
             onError={handleImageError}
+            loading="lazy"
+            referrerPolicy="no-referrer"
           />
         </div>
 
@@ -891,17 +904,15 @@ ${orderSummary.items
       </header>
 
       {newOrderAlert ? (
-        <section className="section" style={{ padding: "16px 0 0" }}>
+        <section className="section section-mini">
           <div className="container">
-            <div className="top-alert">
-              🔔 {newOrderAlert}
-            </div>
+            <div className="top-alert">🔔 {newOrderAlert}</div>
           </div>
         </section>
       ) : null}
 
       {isAllowedUser && highlightedOrders.length > 0 ? (
-        <section className="section" style={{ padding: "16px 0 0" }}>
+        <section className="section section-mini">
           <div className="container">
             <div className="pending-banner">
               <h3>Pedidos pendientes</h3>
@@ -1098,7 +1109,7 @@ ${orderSummary.items
             Mostrando <strong>{filteredProducts.length}</strong> producto(s)
           </div>
 
-          <div className="product-grid" style={{ marginTop: "24px" }}>
+          <div className="product-grid product-grid-catalog">
             {filteredProducts.length > 0 ? (
               filteredProducts.map((product) => renderProductCard(product))
             ) : (
@@ -1310,9 +1321,11 @@ ${orderSummary.items
                 products.map((product) => (
                   <div className="admin-list-item" key={product.id}>
                     <img
-                      src={product.image || fallbackImage}
+                      src={normalizeImageUrl(product.image)}
                       alt={product.name}
                       onError={handleImageError}
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
                     />
                     <div className="admin-list-info">
                       <strong>{product.name}</strong>
@@ -1363,7 +1376,7 @@ ${orderSummary.items
               <div>
                 <p className="section-kicker">Pedidos</p>
                 <h3>Panel de pedidos</h3>
-                <p className="admin-text" style={{ marginTop: "8px" }}>
+                <p className="admin-text orders-stats">
                   Activos: <strong>{activeOrders.length}</strong> | Pendientes:{" "}
                   <strong>{pendingOrdersCount}</strong>
                 </p>
@@ -1428,39 +1441,43 @@ ${orderSummary.items
                 <div className="empty-state">Tu carrito está vacío.</div>
               ) : (
                 <>
-                  {cart.map((item) => (
-                    <div className="cart-item" key={item.id}>
-                      <img
-                        src={item.image || fallbackImage}
-                        alt={item.name}
-                        onError={handleImageError}
-                      />
-                      <div className="cart-item-info">
-                        <strong>{item.name}</strong>
-                        <span>₡{item.price}</span>
-                        <span>Stock: {item.stock}</span>
-                      </div>
+                  <div className="cart-items-list">
+                    {cart.map((item) => (
+                      <div className="cart-item" key={item.id}>
+                        <img
+                          src={normalizeImageUrl(item.image)}
+                          alt={item.name}
+                          onError={handleImageError}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="cart-item-info">
+                          <strong>{item.name}</strong>
+                          <span>₡{item.price}</span>
+                          <span>Stock: {item.stock}</span>
+                        </div>
 
-                      <div className="cart-item-actions">
-                        <div className="qty-box">
-                          <button type="button" onClick={() => decreaseQty(item.id)}>
-                            -
-                          </button>
-                          <span>{item.qty}</span>
-                          <button type="button" onClick={() => increaseQty(item.id)}>
-                            +
+                        <div className="cart-item-actions">
+                          <div className="qty-box">
+                            <button type="button" onClick={() => decreaseQty(item.id)}>
+                              -
+                            </button>
+                            <span>{item.qty}</span>
+                            <button type="button" onClick={() => increaseQty(item.id)}>
+                              +
+                            </button>
+                          </div>
+                          <button
+                            className="remove-btn"
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                          >
+                            Quitar
                           </button>
                         </div>
-                        <button
-                          className="remove-btn"
-                          type="button"
-                          onClick={() => removeFromCart(item.id)}
-                        >
-                          Quitar
-                        </button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
 
                   <div className="checkout-card">
                     <h4>Datos de compra</h4>
@@ -1499,7 +1516,7 @@ ${orderSummary.items
                       </div>
 
                       <div className="field field-full">
-                        <label>Tipo de entrega *</label>
+                        <label>Método de retiro / entrega *</label>
                         <select
                           name="deliveryType"
                           value={checkoutData.deliveryType}
@@ -1554,24 +1571,26 @@ ${orderSummary.items
             </div>
 
             <div className="cart-footer">
-              <div className="cart-total">
-                <strong>Subtotal:</strong>
-                <span>₡{cartSubtotal}</span>
-              </div>
+              <div className="cart-totals-box">
+                <div className="cart-total">
+                  <strong>Subtotal:</strong>
+                  <span>₡{cartSubtotal}</span>
+                </div>
 
-              <div className="cart-total">
-                <strong>Envío:</strong>
-                <span>₡{shippingCost}</span>
-              </div>
+                <div className="cart-total">
+                  <strong>Envío:</strong>
+                  <span>₡{shippingCost}</span>
+                </div>
 
-              <div className="cart-total">
-                <strong>Total:</strong>
-                <span>₡{cartTotal}</span>
+                <div className="cart-total cart-total-final">
+                  <strong>Total:</strong>
+                  <span>₡{cartTotal}</span>
+                </div>
               </div>
 
               <div className="cart-footer-buttons">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary compact-btn"
                   type="button"
                   onClick={clearCart}
                   disabled={!cart.length}
@@ -1580,7 +1599,7 @@ ${orderSummary.items
                 </button>
 
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary compact-btn"
                   type="button"
                   onClick={async () => {
                     const result = await createOrder("whatsapp");
@@ -1595,7 +1614,7 @@ ${orderSummary.items
                 </button>
 
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary compact-btn"
                   type="button"
                   onClick={async () => {
                     const result = await createOrder("sinpe");
@@ -1619,7 +1638,7 @@ Enviá comprobante por WhatsApp`
                 </button>
 
                 <button
-                  className="btn btn-transfer"
+                  className="btn btn-transfer compact-btn"
                   type="button"
                   onClick={async () => {
                     const result = await createOrder("transferencia");
@@ -1641,7 +1660,7 @@ Cuenta: 945904472`
                 </button>
 
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary compact-btn"
                   type="button"
                   onClick={async () => {
                     const result = await createOrder("tarjeta");
@@ -1666,23 +1685,39 @@ Próximamente pago con tarjeta`
         </div>
       ) : null}
 
-      <a
-        href={`https://wa.me/50670477509?text=${buildSupportWhatsappMessage()}`}
-        target="_blank"
-        rel="noreferrer"
-        className="whatsapp-float"
-        aria-label="WhatsApp"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          width="28"
-          height="28"
-          fill="currentColor"
+      {!cartOpen ? (
+        <a
+          href={`https://wa.me/50670477509?text=${buildSupportWhatsappMessage()}`}
+          target="_blank"
+          rel="noreferrer"
+          className="whatsapp-float"
+          aria-label="WhatsApp"
         >
-          <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.07-.11-.24-.18-.51-.31zM16.03 3C8.84 3 3 8.74 3 15.82c0 2.49.73 4.92 2.11 7l-1.38 5.02 5.17-1.35a13.17 13.17 0 0 0 6.13 1.54h.01c7.18 0 13.02-5.74 13.02-12.82C28.06 8.74 23.22 3 16.03 3zm0 23.45h-.01a10.9 10.9 0 0 1-5.56-1.53l-.4-.24-3.07.8.82-2.97-.26-.42a10.73 10.73 0 0 1-1.66-5.66c0-5.92 4.85-10.74 10.82-10.74 5.96 0 10.81 4.82 10.81 10.74 0 5.92-4.85 10.74-10.79 10.74z" />
-        </svg>
-      </a>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 32 32"
+            width="28"
+            height="28"
+            fill="currentColor"
+          >
+            <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.18-.51-.31z" />
+            <path d="M16.01 3.2c-7.07 0-12.8 5.72-12.8 12.79 0 2.25.59 4.45 1.71 6.38L3.2 28.8l6.58-1.69a12.74 12.74 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.73 12.79-12.8 0-3.43-1.33-6.66-3.76-9.09A12.7 12.7 0 0 0 16.01 3.2zm0 23.34h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.91 1 1.05-3.81-.25-.39a10.6 10.6 0 0 1-1.63-5.67c0-5.86 4.77-10.63 10.64-10.63 2.83 0 5.49 1.1 7.49 3.11a10.5 10.5 0 0 1 3.11 7.5c0 5.87-4.77 10.64-10.64 10.64z" />
+          </svg>
+        </a>
+      ) : null}
+
+      <footer className="footer">
+        <div className="container footer-inner">
+          <div>
+            <strong>Boutique New Hope Grecia</strong>
+            <p>Moda femenina y masculina con estilo, color y elegancia.</p>
+          </div>
+          <div>
+            <p>Grecia, Costa Rica</p>
+            <p>Pedidos por WhatsApp, SINPE y transferencia disponibles</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
