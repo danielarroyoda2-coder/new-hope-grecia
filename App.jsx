@@ -3,14 +3,46 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 
 const categories = [
-  "Blusas",
-  "Camisas",
-  "Vestidos",
-  "Pantalones",
-  "Enaguas",
-  "Accesorios",
-  "Sombreros",
-  "Vestidos de baño",
+  {
+    name: "Blusas",
+    image:
+      "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Camisas",
+    image:
+      "https://images.unsplash.com/photo-1603252109303-2751441dd157?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Vestidos",
+    image:
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Pantalones",
+    image:
+      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Enaguas",
+    image:
+      "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Accesorios",
+    image:
+      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Sombreros",
+    image:
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    name: "Vestidos de baño",
+    image:
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=80",
+  },
 ];
 
 const allowedEmails = [
@@ -54,6 +86,9 @@ const fallbackImage =
   </svg>
 `);
 
+const allCategoryImage =
+  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80";
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -74,9 +109,6 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState("Todos");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [onlyAvailable, setOnlyAvailable] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState("");
   const [lastOrderSummary, setLastOrderSummary] = useState(null);
@@ -88,6 +120,10 @@ export default function App() {
   const [audioEnabled, setAudioEnabled] = useState(false);
 
   const [ordersTab, setOrdersTab] = useState("pendientes");
+
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerImage, setViewerImage] = useState("");
+  const [viewerTitle, setViewerTitle] = useState("");
 
   useEffect(() => {
     getProducts();
@@ -129,6 +165,17 @@ export default function App() {
     return () => {
       window.removeEventListener("click", enableAudio);
     };
+  }, []);
+
+  useEffect(() => {
+    function handleEscape(e) {
+      if (e.key === "Escape") {
+        setViewerOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
   const isAllowedUser =
@@ -255,15 +302,11 @@ export default function App() {
 
   function normalizeImageUrl(url) {
     if (!url) return fallbackImage;
-
     const clean = String(url).trim();
-
     if (!clean) return fallbackImage;
-
     if (clean.startsWith("http://")) {
       return clean.replace("http://", "https://");
     }
-
     return clean;
   }
 
@@ -304,9 +347,7 @@ export default function App() {
     }
 
     const valid = validateCheckout();
-    if (!valid) {
-      return null;
-    }
+    if (!valid) return null;
 
     const orderNumber = generateOrderNumber();
 
@@ -325,7 +366,6 @@ export default function App() {
 
     const shippingCost = getShippingCost(checkoutData.deliveryType);
     const total = subtotal + shippingCost;
-
     const customerPhoneFormatted = formatPhoneDisplay(checkoutData.customerPhone);
 
     const { error: orderError } = await supabase.from("Pedidos").insert([
@@ -641,6 +681,12 @@ export default function App() {
     setCart([]);
   }
 
+  function openImageViewer(image, title) {
+    setViewerImage(normalizeImageUrl(image));
+    setViewerTitle(title || "Producto");
+    setViewerOpen(true);
+  }
+
   const cartCount = useMemo(
     () => cart.reduce((sum, item) => sum + item.qty, 0),
     [cart]
@@ -662,29 +708,9 @@ export default function App() {
   );
 
   const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    if (selectedCategory !== "Todos") {
-      result = result.filter((product) => product.category === selectedCategory);
-    }
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      result = result.filter((product) =>
-        String(product.name || "").toLowerCase().includes(term)
-      );
-    }
-
-    if (maxPrice !== "") {
-      result = result.filter((product) => Number(product.price) <= Number(maxPrice));
-    }
-
-    if (onlyAvailable) {
-      result = result.filter((product) => Number(product.stock) > 0);
-    }
-
-    return result;
-  }, [products, selectedCategory, searchTerm, maxPrice, onlyAvailable]);
+    if (selectedCategory === "Todos") return products;
+    return products.filter((product) => product.category === selectedCategory);
+  }, [products, selectedCategory]);
 
   const pendingOrders = useMemo(
     () => orders.filter((order) => order.status === "pendiente"),
@@ -774,19 +800,37 @@ ${orderSummary.items
   function renderProductCard(product) {
     return (
       <article className="product-card" key={product.id}>
-        <div className="product-image-wrap">
-          <img
-            src={normalizeImageUrl(product.image)}
-            alt={product.name}
-            onError={handleImageError}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+        <button
+          type="button"
+          className="product-image-button"
+          onClick={() => openImageViewer(product.image, product.name)}
+        >
+          <div className="product-image-wrap">
+            <img
+              src={normalizeImageUrl(product.image)}
+              alt={product.name}
+              onError={handleImageError}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </button>
 
         <div className="product-body">
           <p className="product-category">{product.category}</p>
           <h4>{product.name}</h4>
+
+          {product.sizes ? (
+            <p className="product-extra">
+              <strong>Tallas:</strong> {normalizeOptionText(product.sizes)}
+            </p>
+          ) : null}
+
+          {product.colors ? (
+            <p className="product-extra">
+              <strong>Colores:</strong> {normalizeOptionText(product.colors)}
+            </p>
+          ) : null}
 
           <div className="product-row">
             <span className="price">₡{product.price}</span>
@@ -1051,62 +1095,43 @@ ${orderSummary.items
             </div>
           </div>
 
-          <div className="catalog-toolbar">
-            <div className="field">
-              <label>Buscar por nombre</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Ej. vestido rojo"
-              />
-            </div>
-
-            <div className="field">
-              <label>Precio máximo</label>
-              <input
-                type="number"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="Ej. 20000"
-              />
-            </div>
-
-            <div className="field checkbox-field">
-              <label>Disponibilidad</label>
-              <button
-                type="button"
-                className={`toggle-btn ${onlyAvailable ? "toggle-active" : ""}`}
-                onClick={() => setOnlyAvailable((current) => !current)}
-              >
-                {onlyAvailable ? "Solo disponibles: Sí" : "Solo disponibles: No"}
-              </button>
-            </div>
-          </div>
-
           <div className="category-grid">
             <button
               type="button"
-              className={`category-card ${selectedCategory === "Todos" ? "category-active" : ""}`}
+              className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
               onClick={() => setSelectedCategory("Todos")}
             >
-              Todos
+              <div className="category-image-wrap">
+                <img
+                  src={allCategoryImage}
+                  alt="Todos"
+                  loading="lazy"
+                  onError={handleImageError}
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <span className="category-title">Todos</span>
             </button>
 
             {categories.map((item) => (
               <button
                 type="button"
-                className={`category-card ${selectedCategory === item ? "category-active" : ""}`}
-                key={item}
-                onClick={() => setSelectedCategory(item)}
+                className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
+                key={item.name}
+                onClick={() => setSelectedCategory(item.name)}
               >
-                {item}
+                <div className="category-image-wrap">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    loading="lazy"
+                    onError={handleImageError}
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <span className="category-title">{item.name}</span>
               </button>
             ))}
-          </div>
-
-          <div className="catalog-results">
-            Mostrando <strong>{filteredProducts.length}</strong> producto(s)
           </div>
 
           <div className="product-grid product-grid-catalog">
@@ -1114,7 +1139,7 @@ ${orderSummary.items
               filteredProducts.map((product) => renderProductCard(product))
             ) : (
               <div className="empty-state">
-                No hay productos disponibles con esos filtros.
+                No hay productos disponibles en esta categoría.
               </div>
             )}
           </div>
@@ -1213,8 +1238,8 @@ ${orderSummary.items
                       onChange={handleChange}
                     >
                       {categories.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
+                        <option key={item.name} value={item.name}>
+                          {item.name}
                         </option>
                       ))}
                     </select>
@@ -1441,44 +1466,6 @@ ${orderSummary.items
                 <div className="empty-state">Tu carrito está vacío.</div>
               ) : (
                 <>
-                  <div className="cart-items-list">
-                    {cart.map((item) => (
-                      <div className="cart-item" key={item.id}>
-                        <img
-                          src={normalizeImageUrl(item.image)}
-                          alt={item.name}
-                          onError={handleImageError}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div className="cart-item-info">
-                          <strong>{item.name}</strong>
-                          <span>₡{item.price}</span>
-                          <span>Stock: {item.stock}</span>
-                        </div>
-
-                        <div className="cart-item-actions">
-                          <div className="qty-box">
-                            <button type="button" onClick={() => decreaseQty(item.id)}>
-                              -
-                            </button>
-                            <span>{item.qty}</span>
-                            <button type="button" onClick={() => increaseQty(item.id)}>
-                              +
-                            </button>
-                          </div>
-                          <button
-                            className="remove-btn"
-                            type="button"
-                            onClick={() => removeFromCart(item.id)}
-                          >
-                            Quitar
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
                   <div className="checkout-card">
                     <h4>Datos de compra</h4>
 
@@ -1565,6 +1552,50 @@ ${orderSummary.items
                         <strong>₡{cartTotal}</strong>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="cart-items-list">
+                    {cart.map((item) => (
+                      <div className="cart-item" key={item.id}>
+                        <img
+                          src={normalizeImageUrl(item.image)}
+                          alt={item.name}
+                          onError={handleImageError}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="cart-item-info">
+                          <strong>{item.name}</strong>
+                          <span>₡{item.price}</span>
+                          <span>Stock: {item.stock}</span>
+                          {item.sizes ? (
+                            <span>Tallas: {normalizeOptionText(item.sizes)}</span>
+                          ) : null}
+                          {item.colors ? (
+                            <span>Colores: {normalizeOptionText(item.colors)}</span>
+                          ) : null}
+                        </div>
+
+                        <div className="cart-item-actions">
+                          <div className="qty-box">
+                            <button type="button" onClick={() => decreaseQty(item.id)}>
+                              -
+                            </button>
+                            <span>{item.qty}</span>
+                            <button type="button" onClick={() => increaseQty(item.id)}>
+                              +
+                            </button>
+                          </div>
+                          <button
+                            className="remove-btn"
+                            type="button"
+                            onClick={() => removeFromCart(item.id)}
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
@@ -1685,6 +1716,26 @@ Próximamente pago con tarjeta`
         </div>
       ) : null}
 
+      {viewerOpen ? (
+        <div className="image-viewer-overlay" onClick={() => setViewerOpen(false)}>
+          <div className="image-viewer-box" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="image-viewer-close"
+              onClick={() => setViewerOpen(false)}
+            >
+              ✕
+            </button>
+            <img
+              src={viewerImage || fallbackImage}
+              alt={viewerTitle}
+              onError={handleImageError}
+            />
+            <p>{viewerTitle}</p>
+          </div>
+        </div>
+      ) : null}
+
       {!cartOpen ? (
         <a
           href={`https://wa.me/50670477509?text=${buildSupportWhatsappMessage()}`}
@@ -1700,7 +1751,7 @@ Próximamente pago con tarjeta`
             height="28"
             fill="currentColor"
           >
-            <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.18-.51-.31z" />
+            <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.06-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.18-.51-.31z" />
             <path d="M16.01 3.2c-7.07 0-12.8 5.72-12.8 12.79 0 2.25.59 4.45 1.71 6.38L3.2 28.8l6.58-1.69a12.74 12.74 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.73 12.79-12.8 0-3.43-1.33-6.66-3.76-9.09A12.7 12.7 0 0 0 16.01 3.2zm0 23.34h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.91 1 1.05-3.81-.25-.39a10.6 10.6 0 0 1-1.63-5.67c0-5.86 4.77-10.63 10.64-10.63 2.83 0 5.49 1.1 7.49 3.11a10.5 10.5 0 0 1 3.11 7.5c0 5.87-4.77 10.64-10.64 10.64z" />
           </svg>
         </a>
