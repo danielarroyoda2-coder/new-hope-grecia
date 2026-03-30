@@ -637,7 +637,7 @@ export default function App() {
           item.id === product.id
             ? {
                 ...item,
-                qty: Math.min(item.qty + 1, Number(product.stock)),
+                qty: Math.min(item.qty + 1, Number(item.stock)),
               }
             : item
         );
@@ -1095,43 +1095,45 @@ ${orderSummary.items
             </div>
           </div>
 
-          <div className="category-grid">
-            <button
-              type="button"
-              className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
-              onClick={() => setSelectedCategory("Todos")}
-            >
-              <div className="category-image-wrap">
-                <img
-                  src={allCategoryImage}
-                  alt="Todos"
-                  loading="lazy"
-                  onError={handleImageError}
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <span className="category-title">Todos</span>
-            </button>
-
-            {categories.map((item) => (
+          <div className="categories-scroll-wrap">
+            <div className="category-grid category-grid-scroll">
               <button
                 type="button"
-                className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
-                key={item.name}
-                onClick={() => setSelectedCategory(item.name)}
+                className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
+                onClick={() => setSelectedCategory("Todos")}
               >
                 <div className="category-image-wrap">
                   <img
-                    src={item.image}
-                    alt={item.name}
+                    src={allCategoryImage}
+                    alt="Todos"
                     loading="lazy"
                     onError={handleImageError}
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <span className="category-title">{item.name}</span>
+                <span className="category-title">Todos</span>
               </button>
-            ))}
+
+              {categories.map((item) => (
+                <button
+                  type="button"
+                  className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
+                  key={item.name}
+                  onClick={() => setSelectedCategory(item.name)}
+                >
+                  <div className="category-image-wrap">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      loading="lazy"
+                      onError={handleImageError}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <span className="category-title">{item.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="product-grid product-grid-catalog">
