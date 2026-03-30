@@ -13,6 +13,40 @@ const categories = [
   "Vestidos de baño",
 ];
 
+const sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"];
+
+const colors = [
+  "Negro",
+  "Blanco",
+  "Gris",
+  "Azul",
+  "Azul marino",
+  "Celeste",
+  "Turquesa",
+  "Rojo",
+  "Rosado",
+  "Fucsia",
+  "Verde",
+  "Verde oliva",
+  "Verde menta",
+  "Amarillo",
+  "Naranja",
+  "Beige",
+  "Café",
+  "Marrón",
+  "Morado",
+  "Lila",
+  "Vino",
+  "Bordó",
+  "Nude",
+  "Crema",
+  "Arena",
+  "Mostaza",
+  "Coral",
+  "Terracota",
+  "Denim",
+];
+
 const allowedEmails = [
   "daniel.arroyo.da2@roche.com",
   "anacatalinajimenez88@gmail.com",
@@ -58,6 +92,11 @@ export default function App() {
 
   const [checkoutData, setCheckoutData] = useState(initialCheckout);
 
+  const [newOrderAlert, setNewOrderAlert] = useState("");
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  const [productSelections, setProductSelections] = useState({});
+
   useEffect(() => {
     getProducts();
     getOrders();
@@ -65,6 +104,11 @@ export default function App() {
     const savedCart = localStorage.getItem("bnhg_cart");
     if (savedCart) {
       setCart(JSON.parse(savedCart));
+    }
+
+    const savedSelections = localStorage.getItem("bnhg_product_selections");
+    if (savedSelections) {
+      setProductSelections(JSON.parse(savedSelections));
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -86,6 +130,63 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("bnhg_cart", JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem("bnhg_product_selections", JSON.stringify(productSelections));
+  }, [productSelections]);
+
+  useEffect(() => {
+    function enableAudio() {
+      setAudioEnabled(true);
+      window.removeEventListener("click", enableAudio);
+    }
+
+    window.addEventListener("click", enableAudio);
+
+    return () => {
+      window.removeEventListener("click", enableAudio);
+    };
+  }, []);
+
+  const isAllowedUser =
+    session && allowedEmails.includes((userEmail || "").toLowerCase());
+
+  useEffect(() => {
+    if (!isAllowedUser) return;
+
+    const channel = supabase
+      .channel("pedidos-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "Pedidos",
+        },
+        async (payload) => {
+          const order = payload.new;
+
+          setNewOrderAlert(
+            `Nuevo pedido recibido: ${order.order_number || "sin número"}`
+          );
+
+          await getOrders();
+
+          if (audioEnabled) {
+            playNewOrderSound();
+          }
+
+          setTimeout(() => {
+            setNewOrderAlert("");
+          }, 8000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAllowedUser, audioEnabled]);
 
   async function getProducts() {
     const { data, error } = await supabase
@@ -115,6 +216,17 @@ export default function App() {
     }
   }
 
+  function playNewOrderSound() {
+    try {
+      const audio = new Audio(
+        "data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTAAAAAA////AAAAAP///wAAAAD///8AAAAA////AAAAAP///wAAAAD///8AAAAA"
+      );
+      audio.play().catch(() => {});
+    } catch (error) {
+      console.error("No se pudo reproducir el sonido", error);
+    }
+  }
+
   function generateOrderNumber() {
     return `NHG-${Date.now()}`;
   }
@@ -129,6 +241,25 @@ export default function App() {
     if (deliveryType === "gam") return "Envío dentro del GAM";
     if (deliveryType === "fuera_gam") return "Envío fuera del GAM";
     return "Retiro en local físico";
+  }
+
+  function getProductSelection(productId) {
+    return (
+      productSelections[productId] || {
+        size: "M",
+        color: "Negro",
+      }
+    );
+  }
+
+  function handleProductSelectionChange(productId, field, value) {
+    setProductSelections((current) => ({
+      ...current,
+      [productId]: {
+        ...getProductSelection(productId),
+        [field]: value,
+      },
+    }));
   }
 
   async function createOrder(method) {
@@ -154,8 +285,11 @@ export default function App() {
 
     const orderItems = cart.map((item) => ({
       id: item.id,
+      cartKey: item.cartKey,
       name: item.name,
       qty: item.qty,
+      size: item.size,
+      color: item.color,
       price: Number(item.price),
       subtotal: Number(item.price) * item.qty,
     }));
@@ -399,12 +533,15 @@ export default function App() {
   function addToCart(product) {
     if (Number(product.stock) === 0) return;
 
+    const selection = getProductSelection(product.id);
+    const cartKey = `${product.id}-${selection.size}-${selection.color}`;
+
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
+      const existing = current.find((item) => item.cartKey === cartKey);
 
       if (existing) {
         return current.map((item) =>
-          item.id === product.id
+          item.cartKey === cartKey
             ? {
                 ...item,
                 qty: Math.min(item.qty + 1, Number(product.stock)),
@@ -413,16 +550,25 @@ export default function App() {
         );
       }
 
-      return [...current, { ...product, qty: 1 }];
+      return [
+        ...current,
+        {
+          ...product,
+          cartKey,
+          size: selection.size,
+          color: selection.color,
+          qty: 1,
+        },
+      ];
     });
 
     setCartOpen(true);
   }
 
-  function increaseQty(id) {
+  function increaseQty(cartKey) {
     setCart((current) =>
       current.map((item) => {
-        if (item.id !== id) return item;
+        if (item.cartKey !== cartKey) return item;
 
         return {
           ...item,
@@ -432,19 +578,19 @@ export default function App() {
     );
   }
 
-  function decreaseQty(id) {
+  function decreaseQty(cartKey) {
     setCart((current) =>
       current
         .map((item) => {
-          if (item.id !== id) return item;
+          if (item.cartKey !== cartKey) return item;
           return { ...item, qty: item.qty - 1 };
         })
         .filter((item) => item.qty > 0)
     );
   }
 
-  function removeFromCart(id) {
-    setCart((current) => current.filter((item) => item.id !== id));
+  function removeFromCart(cartKey) {
+    setCart((current) => current.filter((item) => item.cartKey !== cartKey));
   }
 
   function clearCart() {
@@ -470,9 +616,6 @@ export default function App() {
     () => cartSubtotal + shippingCost,
     [cartSubtotal, shippingCost]
   );
-
-  const isAllowedUser =
-    session && allowedEmails.includes((userEmail || "").toLowerCase());
 
   const filteredProducts = useMemo(() => {
     if (selectedCategory === "Todos") return products;
@@ -502,8 +645,76 @@ Total: ₡${orderSummary.total}
 
 Productos:
 ${orderSummary.items
-  .map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`)
+  .map(
+    (item) =>
+      `- ${item.name} | Talla: ${item.size} | Color: ${item.color} | x${item.qty} = ₡${item.subtotal}`
+  )
   .join("\n")}`
+    );
+  }
+
+  function renderProductCard(product) {
+    const selection = getProductSelection(product.id);
+
+    return (
+      <article className="product-card" key={product.id}>
+        <div className="product-image-wrap">
+          <img src={product.image} alt={product.name} />
+        </div>
+
+        <div className="product-body">
+          <p className="product-category">{product.category}</p>
+          <h4>{product.name}</h4>
+
+          <div className="product-row">
+            <span className="price">₡{product.price}</span>
+            <span className="stock">{stockLabel(product.stock)}</span>
+          </div>
+
+          <div style={{ display: "grid", gap: "10px", marginBottom: "14px" }}>
+            <div className="field">
+              <label>Talla</label>
+              <select
+                value={selection.size}
+                onChange={(e) =>
+                  handleProductSelectionChange(product.id, "size", e.target.value)
+                }
+              >
+                {sizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field">
+              <label>Color</label>
+              <select
+                value={selection.color}
+                onChange={(e) =>
+                  handleProductSelectionChange(product.id, "color", e.target.value)
+                }
+              >
+                {colors.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button
+            className="btn btn-primary full"
+            type="button"
+            onClick={() => addToCart(product)}
+            disabled={Number(product.stock) === 0}
+          >
+            {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
+          </button>
+        </div>
+      </article>
     );
   }
 
@@ -533,6 +744,25 @@ ${orderSummary.items
           </div>
         </div>
       </header>
+
+      {newOrderAlert ? (
+        <section className="section" style={{ padding: "16px 0 0" }}>
+          <div className="container">
+            <div
+              style={{
+                background: "#dc2626",
+                color: "white",
+                padding: "16px 20px",
+                borderRadius: "18px",
+                fontWeight: "700",
+                boxShadow: "0 10px 24px rgba(0,0,0,0.12)",
+              }}
+            >
+              🔔 {newOrderAlert}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="hero">
         <div className="container hero-grid">
@@ -632,31 +862,7 @@ ${orderSummary.items
 
           <div className="product-grid">
             {products.length > 0 ? (
-              products.map((product) => (
-                <article className="product-card" key={product.id}>
-                  <div className="product-image-wrap">
-                    <img src={product.image} alt={product.name} />
-                  </div>
-
-                  <div className="product-body">
-                    <p className="product-category">{product.category}</p>
-                    <h4>{product.name}</h4>
-                    <div className="product-row">
-                      <span className="price">₡{product.price}</span>
-                      <span className="stock">{stockLabel(product.stock)}</span>
-                    </div>
-
-                    <button
-                      className="btn btn-primary full"
-                      type="button"
-                      onClick={() => addToCart(product)}
-                      disabled={Number(product.stock) === 0}
-                    >
-                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
-                    </button>
-                  </div>
-                </article>
-              ))
+              products.map((product) => renderProductCard(product))
             ) : (
               <div className="empty-state">
                 Todavía no hay productos cargados. Usá el panel de administración
@@ -699,31 +905,7 @@ ${orderSummary.items
 
           <div className="product-grid" style={{ marginTop: "24px" }}>
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                <article className="product-card" key={product.id}>
-                  <div className="product-image-wrap">
-                    <img src={product.image} alt={product.name} />
-                  </div>
-
-                  <div className="product-body">
-                    <p className="product-category">{product.category}</p>
-                    <h4>{product.name}</h4>
-                    <div className="product-row">
-                      <span className="price">₡{product.price}</span>
-                      <span className="stock">{stockLabel(product.stock)}</span>
-                    </div>
-
-                    <button
-                      className="btn btn-primary full"
-                      type="button"
-                      onClick={() => addToCart(product)}
-                      disabled={Number(product.stock) === 0}
-                    >
-                      {Number(product.stock) === 0 ? "Agotado" : "Agregar al carrito"}
-                    </button>
-                  </div>
-                </article>
-              ))
+              filteredProducts.map((product) => renderProductCard(product))
             ) : (
               <div className="empty-state">
                 No hay productos disponibles en esta categoría.
@@ -957,6 +1139,7 @@ ${orderSummary.items
                     <div className="admin-list-meta">
                       <span>Total: ₡{order.total}</span>
                       <span>Envío: ₡{order.shipping_cost || 0}</span>
+                      <span>Estado actual: {order.status}</span>
                       <span>
                         {order.created_at
                           ? new Date(order.created_at).toLocaleString()
@@ -969,7 +1152,7 @@ ${orderSummary.items
                       {Array.isArray(order.items) ? (
                         order.items.map((item, index) => (
                           <span key={index}>
-                            {item.name} x{item.qty} = ₡{item.subtotal}
+                            {item.name} | Talla: {item.size || "N/A"} | Color: {item.color || "N/A"} | x{item.qty} = ₡{item.subtotal}
                           </span>
                         ))
                       ) : (
@@ -1032,28 +1215,30 @@ ${orderSummary.items
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div className="cart-item" key={item.id}>
+                    <div className="cart-item" key={item.cartKey}>
                       <img src={item.image} alt={item.name} />
                       <div className="cart-item-info">
                         <strong>{item.name}</strong>
                         <span>₡{item.price}</span>
+                        <span>Talla: {item.size}</span>
+                        <span>Color: {item.color}</span>
                         <span>Stock: {item.stock}</span>
                       </div>
 
                       <div className="cart-item-actions">
                         <div className="qty-box">
-                          <button type="button" onClick={() => decreaseQty(item.id)}>
+                          <button type="button" onClick={() => decreaseQty(item.cartKey)}>
                             -
                           </button>
                           <span>{item.qty}</span>
-                          <button type="button" onClick={() => increaseQty(item.id)}>
+                          <button type="button" onClick={() => increaseQty(item.cartKey)}>
                             +
                           </button>
                         </div>
                         <button
                           className="remove-btn"
                           type="button"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.cartKey)}
                         >
                           Quitar
                         </button>
@@ -1226,8 +1411,18 @@ Próximamente pago con tarjeta`
         target="_blank"
         rel="noreferrer"
         className="whatsapp-float"
+        aria-label="WhatsApp"
       >
-        💬
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
+          width="28"
+          height="28"
+          fill="currentColor"
+        >
+          <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.18-.51-.31z" />
+          <path d="M16.01 3.2c-7.07 0-12.8 5.72-12.8 12.79 0 2.25.59 4.45 1.71 6.38L3.2 28.8l6.58-1.69a12.74 12.74 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.73 12.79-12.8 0-3.43-1.33-6.66-3.76-9.09A12.7 12.7 0 0 0 16.01 3.2zm0 23.34h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.91 1 1.05-3.81-.25-.39a10.6 10.6 0 0 1-1.63-5.67c0-5.86 4.77-10.63 10.64-10.63 2.83 0 5.49 1.1 7.49 3.11a10.5 10.5 0 0 1 3.11 7.5c0 5.87-4.77 10.64-10.64 10.64z" />
+        </svg>
       </a>
 
       <footer className="footer">
