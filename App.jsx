@@ -13,40 +13,6 @@ const categories = [
   "Vestidos de baño",
 ];
 
-const sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"];
-
-const colors = [
-  "Negro",
-  "Blanco",
-  "Gris",
-  "Azul",
-  "Azul marino",
-  "Celeste",
-  "Turquesa",
-  "Rojo",
-  "Rosado",
-  "Fucsia",
-  "Verde",
-  "Verde oliva",
-  "Verde menta",
-  "Amarillo",
-  "Naranja",
-  "Beige",
-  "Café",
-  "Marrón",
-  "Morado",
-  "Lila",
-  "Vino",
-  "Bordó",
-  "Nude",
-  "Crema",
-  "Arena",
-  "Mostaza",
-  "Coral",
-  "Terracota",
-  "Denim",
-];
-
 const allowedEmails = [
   "daniel.arroyo.da2@roche.com",
   "anacatalinajimenez88@gmail.com",
@@ -59,6 +25,8 @@ const initialForm = {
   stock: "",
   image: "",
   category: "Vestidos",
+  sizes: "",
+  colors: "",
 };
 
 const initialCheckout = {
@@ -68,10 +36,23 @@ const initialCheckout = {
   deliveryAddress: "",
 };
 
+const fallbackImage =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">
+    <rect width="800" height="1000" fill="#f3f4f6"/>
+    <rect x="220" y="280" width="360" height="360" rx="28" fill="#e5e7eb"/>
+    <text x="400" y="500" text-anchor="middle" font-family="Arial" font-size="46" fill="#6b7280">
+      Imagen no disponible
+    </text>
+  </svg>
+`);
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [ordersMessage, setOrdersMessage] = useState("");
+  const [highlightedOrders, setHighlightedOrders] = useState([]);
 
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
@@ -95,8 +76,6 @@ export default function App() {
   const [newOrderAlert, setNewOrderAlert] = useState("");
   const [audioEnabled, setAudioEnabled] = useState(false);
 
-  const [productSelections, setProductSelections] = useState({});
-
   useEffect(() => {
     getProducts();
     getOrders();
@@ -104,11 +83,6 @@ export default function App() {
     const savedCart = localStorage.getItem("bnhg_cart");
     if (savedCart) {
       setCart(JSON.parse(savedCart));
-    }
-
-    const savedSelections = localStorage.getItem("bnhg_product_selections");
-    if (savedSelections) {
-      setProductSelections(JSON.parse(savedSelections));
     }
 
     supabase.auth.getSession().then(({ data }) => {
@@ -130,10 +104,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("bnhg_cart", JSON.stringify(cart));
   }, [cart]);
-
-  useEffect(() => {
-    localStorage.setItem("bnhg_product_selections", JSON.stringify(productSelections));
-  }, [productSelections]);
 
   useEffect(() => {
     function enableAudio() {
@@ -170,6 +140,12 @@ export default function App() {
             `Nuevo pedido recibido: ${order.order_number || "sin número"}`
           );
 
+          setHighlightedOrders((current) => {
+            const exists = current.some((item) => item.id === order.id);
+            if (exists) return current;
+            return [order, ...current];
+          });
+
           await getOrders();
 
           if (audioEnabled) {
@@ -202,6 +178,10 @@ export default function App() {
     }
   }
 
+  function getPendingOrders(data) {
+    return (data || []).filter((order) => order.status === "pendiente");
+  }
+
   async function getOrders() {
     const { data, error } = await supabase
       .from("Pedidos")
@@ -213,6 +193,7 @@ export default function App() {
       setOrdersMessage("No se pudieron cargar los pedidos.");
     } else {
       setOrders(data || []);
+      setHighlightedOrders(getPendingOrders(data));
     }
   }
 
@@ -243,23 +224,10 @@ export default function App() {
     return "Retiro en local físico";
   }
 
-  function getProductSelection(productId) {
-    return (
-      productSelections[productId] || {
-        size: "M",
-        color: "Negro",
-      }
-    );
-  }
-
-  function handleProductSelectionChange(productId, field, value) {
-    setProductSelections((current) => ({
-      ...current,
-      [productId]: {
-        ...getProductSelection(productId),
-        [field]: value,
-      },
-    }));
+  function normalizeOptionText(value) {
+    if (!value) return "";
+    if (Array.isArray(value)) return value.join(", ");
+    return String(value);
   }
 
   async function createOrder(method) {
@@ -285,11 +253,8 @@ export default function App() {
 
     const orderItems = cart.map((item) => ({
       id: item.id,
-      cartKey: item.cartKey,
       name: item.name,
       qty: item.qty,
-      size: item.size,
-      color: item.color,
       price: Number(item.price),
       subtotal: Number(item.price) * item.qty,
     }));
@@ -378,6 +343,12 @@ export default function App() {
       return;
     }
 
+    setHighlightedOrders((current) =>
+      newStatus === "pendiente"
+        ? current
+        : current.filter((order) => order.id !== orderId)
+    );
+
     await getOrders();
   }
 
@@ -405,6 +376,8 @@ export default function App() {
       stock: product.stock || "",
       image: product.image || "",
       category: product.category || "Vestidos",
+      sizes: normalizeOptionText(product.sizes),
+      colors: normalizeOptionText(product.colors),
     });
     setMessage("Editando producto.");
     document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" });
@@ -427,16 +400,20 @@ export default function App() {
 
     setLoading(true);
 
+    const payload = {
+      name: form.name,
+      price: Number(form.price),
+      stock: Number(form.stock),
+      image: form.image,
+      category: form.category,
+      sizes: form.sizes,
+      colors: form.colors,
+    };
+
     if (editingId) {
       const { error } = await supabase
         .from("Productos")
-        .update({
-          name: form.name,
-          price: Number(form.price),
-          stock: Number(form.stock),
-          image: form.image,
-          category: form.category,
-        })
+        .update(payload)
         .eq("id", editingId);
 
       setLoading(false);
@@ -454,15 +431,7 @@ export default function App() {
       return;
     }
 
-    const { error } = await supabase.from("Productos").insert([
-      {
-        name: form.name,
-        price: Number(form.price),
-        stock: Number(form.stock),
-        image: form.image,
-        category: form.category,
-      },
-    ]);
+    const { error } = await supabase.from("Productos").insert([payload]);
 
     setLoading(false);
 
@@ -533,15 +502,12 @@ export default function App() {
   function addToCart(product) {
     if (Number(product.stock) === 0) return;
 
-    const selection = getProductSelection(product.id);
-    const cartKey = `${product.id}-${selection.size}-${selection.color}`;
-
     setCart((current) => {
-      const existing = current.find((item) => item.cartKey === cartKey);
+      const existing = current.find((item) => item.id === product.id);
 
       if (existing) {
         return current.map((item) =>
-          item.cartKey === cartKey
+          item.id === product.id
             ? {
                 ...item,
                 qty: Math.min(item.qty + 1, Number(product.stock)),
@@ -550,25 +516,16 @@ export default function App() {
         );
       }
 
-      return [
-        ...current,
-        {
-          ...product,
-          cartKey,
-          size: selection.size,
-          color: selection.color,
-          qty: 1,
-        },
-      ];
+      return [...current, { ...product, qty: 1 }];
     });
 
     setCartOpen(true);
   }
 
-  function increaseQty(cartKey) {
+  function increaseQty(id) {
     setCart((current) =>
       current.map((item) => {
-        if (item.cartKey !== cartKey) return item;
+        if (item.id !== id) return item;
 
         return {
           ...item,
@@ -578,19 +535,19 @@ export default function App() {
     );
   }
 
-  function decreaseQty(cartKey) {
+  function decreaseQty(id) {
     setCart((current) =>
       current
         .map((item) => {
-          if (item.cartKey !== cartKey) return item;
+          if (item.id !== id) return item;
           return { ...item, qty: item.qty - 1 };
         })
         .filter((item) => item.qty > 0)
     );
   }
 
-  function removeFromCart(cartKey) {
-    setCart((current) => current.filter((item) => item.cartKey !== cartKey));
+  function removeFromCart(id) {
+    setCart((current) => current.filter((item) => item.id !== id));
   }
 
   function clearCart() {
@@ -645,21 +602,25 @@ Total: ₡${orderSummary.total}
 
 Productos:
 ${orderSummary.items
-  .map(
-    (item) =>
-      `- ${item.name} | Talla: ${item.size} | Color: ${item.color} | x${item.qty} = ₡${item.subtotal}`
-  )
+  .map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`)
   .join("\n")}`
     );
   }
 
-  function renderProductCard(product) {
-    const selection = getProductSelection(product.id);
+  function handleImageError(e) {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = fallbackImage;
+  }
 
+  function renderProductCard(product) {
     return (
       <article className="product-card" key={product.id}>
         <div className="product-image-wrap">
-          <img src={product.image} alt={product.name} />
+          <img
+            src={product.image || fallbackImage}
+            alt={product.name}
+            onError={handleImageError}
+          />
         </div>
 
         <div className="product-body">
@@ -669,40 +630,6 @@ ${orderSummary.items
           <div className="product-row">
             <span className="price">₡{product.price}</span>
             <span className="stock">{stockLabel(product.stock)}</span>
-          </div>
-
-          <div style={{ display: "grid", gap: "10px", marginBottom: "14px" }}>
-            <div className="field">
-              <label>Talla</label>
-              <select
-                value={selection.size}
-                onChange={(e) =>
-                  handleProductSelectionChange(product.id, "size", e.target.value)
-                }
-              >
-                {sizes.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field">
-              <label>Color</label>
-              <select
-                value={selection.color}
-                onChange={(e) =>
-                  handleProductSelectionChange(product.id, "color", e.target.value)
-                }
-              >
-                {colors.map((color) => (
-                  <option key={color} value={color}>
-                    {color}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <button
@@ -759,6 +686,45 @@ ${orderSummary.items
               }}
             >
               🔔 {newOrderAlert}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isAllowedUser && highlightedOrders.length > 0 ? (
+        <section className="section" style={{ padding: "16px 0 0" }}>
+          <div className="container">
+            <div
+              style={{
+                background: "#b91c1c",
+                color: "white",
+                padding: "20px",
+                borderRadius: "20px",
+                boxShadow: "0 10px 24px rgba(0,0,0,0.12)",
+              }}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: "12px", color: "white" }}>
+                Pedidos pendientes
+              </h3>
+
+              <div style={{ display: "grid", gap: "10px" }}>
+                {highlightedOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    style={{
+                      background: "rgba(255,255,255,0.12)",
+                      padding: "14px",
+                      borderRadius: "14px",
+                    }}
+                  >
+                    <strong>{order.order_number || "Sin número"}</strong>
+                    <div>Cliente: {order.customer_name}</div>
+                    <div>Celular: {order.customer_phone}</div>
+                    <div>Total: ₡{order.total}</div>
+                    <div>Método: {order.payment_method}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1023,6 +989,26 @@ ${orderSummary.items
                       placeholder="https://..."
                     />
                   </div>
+
+                  <div className="field field-full">
+                    <label>Tallas disponibles (solo panel admin)</label>
+                    <input
+                      name="sizes"
+                      value={form.sizes}
+                      onChange={handleChange}
+                      placeholder="XS,S,M,L,XL"
+                    />
+                  </div>
+
+                  <div className="field field-full">
+                    <label>Colores disponibles (solo panel admin)</label>
+                    <input
+                      name="colors"
+                      value={form.colors}
+                      onChange={handleChange}
+                      placeholder="Negro,Blanco,Rojo"
+                    />
+                  </div>
                 </div>
 
                 <div className="admin-actions">
@@ -1070,10 +1056,20 @@ ${orderSummary.items
               {products.length > 0 ? (
                 products.map((product) => (
                   <div className="admin-list-item" key={product.id}>
-                    <img src={product.image} alt={product.name} />
+                    <img
+                      src={product.image || fallbackImage}
+                      alt={product.name}
+                      onError={handleImageError}
+                    />
                     <div className="admin-list-info">
                       <strong>{product.name}</strong>
                       <span>{product.category}</span>
+                      {product.sizes ? (
+                        <span>Tallas: {normalizeOptionText(product.sizes)}</span>
+                      ) : null}
+                      {product.colors ? (
+                        <span>Colores: {normalizeOptionText(product.colors)}</span>
+                      ) : null}
                     </div>
                     <div className="admin-list-meta">
                       <span>₡{product.price}</span>
@@ -1152,7 +1148,7 @@ ${orderSummary.items
                       {Array.isArray(order.items) ? (
                         order.items.map((item, index) => (
                           <span key={index}>
-                            {item.name} | Talla: {item.size || "N/A"} | Color: {item.color || "N/A"} | x{item.qty} = ₡{item.subtotal}
+                            {item.name} x{item.qty} = ₡{item.subtotal}
                           </span>
                         ))
                       ) : (
@@ -1215,30 +1211,32 @@ ${orderSummary.items
               ) : (
                 <>
                   {cart.map((item) => (
-                    <div className="cart-item" key={item.cartKey}>
-                      <img src={item.image} alt={item.name} />
+                    <div className="cart-item" key={item.id}>
+                      <img
+                        src={item.image || fallbackImage}
+                        alt={item.name}
+                        onError={handleImageError}
+                      />
                       <div className="cart-item-info">
                         <strong>{item.name}</strong>
                         <span>₡{item.price}</span>
-                        <span>Talla: {item.size}</span>
-                        <span>Color: {item.color}</span>
                         <span>Stock: {item.stock}</span>
                       </div>
 
                       <div className="cart-item-actions">
                         <div className="qty-box">
-                          <button type="button" onClick={() => decreaseQty(item.cartKey)}>
+                          <button type="button" onClick={() => decreaseQty(item.id)}>
                             -
                           </button>
                           <span>{item.qty}</span>
-                          <button type="button" onClick={() => increaseQty(item.cartKey)}>
+                          <button type="button" onClick={() => increaseQty(item.id)}>
                             +
                           </button>
                         </div>
                         <button
                           className="remove-btn"
                           type="button"
-                          onClick={() => removeFromCart(item.cartKey)}
+                          onClick={() => removeFromCart(item.id)}
                         >
                           Quitar
                         </button>
