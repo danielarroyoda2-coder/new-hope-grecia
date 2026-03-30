@@ -45,6 +45,9 @@ const categories = [
   },
 ];
 
+const allCategoryImage =
+  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80";
+
 const allowedEmails = [
   "daniel.arroyo.da2@roche.com",
   "anacatalinajimenez88@gmail.com",
@@ -86,9 +89,6 @@ const fallbackImage =
   </svg>
 `);
 
-const allCategoryImage =
-  "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80";
-
 export default function App() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -124,6 +124,8 @@ export default function App() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerImage, setViewerImage] = useState("");
   const [viewerTitle, setViewerTitle] = useState("");
+
+  const [productSelections, setProductSelections] = useState({});
 
   useEffect(() => {
     getProducts();
@@ -290,6 +292,17 @@ export default function App() {
     return String(value);
   }
 
+  function parseOptions(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    return String(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
   function normalizePhone(value) {
     return String(value || "").replace(/[^\d]/g, "");
   }
@@ -357,6 +370,8 @@ export default function App() {
       qty: item.qty,
       price: Number(item.price),
       subtotal: Number(item.price) * item.qty,
+      size: item.selectedSize || "",
+      color: item.selectedColor || "",
     }));
 
     const subtotal = cart.reduce(
@@ -495,6 +510,16 @@ export default function App() {
     }
   }
 
+  function handleSelectionChange(productId, field, value) {
+    setProductSelections((current) => ({
+      ...current,
+      [productId]: {
+        ...(current[productId] || {}),
+        [field]: value,
+      },
+    }));
+  }
+
   function handleEdit(product) {
     setEditingId(product.id);
     setForm({
@@ -626,33 +651,64 @@ export default function App() {
     setAuthMessage("Sesión cerrada.");
   }
 
+  function buildCartKey(productId, size, color) {
+    return `${productId}__${size || "sin-talla"}__${color || "sin-color"}`;
+  }
+
   function addToCart(product) {
     if (Number(product.stock) === 0) return;
 
+    const sizes = parseOptions(product.sizes);
+    const colors = parseOptions(product.colors);
+    const selection = productSelections[product.id] || {};
+    const selectedSize = selection.selectedSize || "";
+    const selectedColor = selection.selectedColor || "";
+
+    if (sizes.length > 0 && !selectedSize) {
+      alert("Seleccioná una talla antes de agregar al carrito.");
+      return;
+    }
+
+    if (colors.length > 0 && !selectedColor) {
+      alert("Seleccioná un color antes de agregar al carrito.");
+      return;
+    }
+
+    const cartKey = buildCartKey(product.id, selectedSize, selectedColor);
+
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
+      const existing = current.find((item) => item.cartKey === cartKey);
 
       if (existing) {
         return current.map((item) =>
-          item.id === product.id
+          item.cartKey === cartKey
             ? {
                 ...item,
-                qty: Math.min(item.qty + 1, Number(item.stock)),
+                qty: Math.min(item.qty + 1, Number(product.stock)),
               }
             : item
         );
       }
 
-      return [...current, { ...product, qty: 1 }];
+      return [
+        ...current,
+        {
+          ...product,
+          qty: 1,
+          selectedSize,
+          selectedColor,
+          cartKey,
+        },
+      ];
     });
 
     setCartOpen(true);
   }
 
-  function increaseQty(id) {
+  function increaseQty(cartKey) {
     setCart((current) =>
       current.map((item) => {
-        if (item.id !== id) return item;
+        if (item.cartKey !== cartKey) return item;
 
         return {
           ...item,
@@ -662,19 +718,19 @@ export default function App() {
     );
   }
 
-  function decreaseQty(id) {
+  function decreaseQty(cartKey) {
     setCart((current) =>
       current
         .map((item) => {
-          if (item.id !== id) return item;
+          if (item.cartKey !== cartKey) return item;
           return { ...item, qty: item.qty - 1 };
         })
         .filter((item) => item.qty > 0)
     );
   }
 
-  function removeFromCart(id) {
-    setCart((current) => current.filter((item) => item.id !== id));
+  function removeFromCart(cartKey) {
+    setCart((current) => current.filter((item) => item.cartKey !== cartKey));
   }
 
   function clearCart() {
@@ -781,7 +837,12 @@ Total: ₡${orderSummary.total}
 
 Productos:
 ${orderSummary.items
-  .map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`)
+  .map(
+    (item) =>
+      `- ${item.name} x${item.qty} = ₡${item.subtotal}${
+        item.size ? ` | Talla: ${item.size}` : ""
+      }${item.color ? ` | Color: ${item.color}` : ""}`
+  )
   .join("\n")}`
     );
   }
@@ -798,6 +859,10 @@ ${orderSummary.items
   }
 
   function renderProductCard(product) {
+    const sizes = parseOptions(product.sizes);
+    const colors = parseOptions(product.colors);
+    const selection = productSelections[product.id] || {};
+
     return (
       <article className="product-card" key={product.id}>
         <button
@@ -820,13 +885,59 @@ ${orderSummary.items
           <p className="product-category">{product.category}</p>
           <h4>{product.name}</h4>
 
-          {product.sizes ? (
+          {sizes.length > 0 ? (
+            <div className="field product-choice">
+              <label>Elegí talla</label>
+              <select
+                value={selection.selectedSize || ""}
+                onChange={(e) =>
+                  handleSelectionChange(
+                    product.id,
+                    "selectedSize",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Seleccionar talla</option>
+                {sizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {colors.length > 0 ? (
+            <div className="field product-choice">
+              <label>Elegí color</label>
+              <select
+                value={selection.selectedColor || ""}
+                onChange={(e) =>
+                  handleSelectionChange(
+                    product.id,
+                    "selectedColor",
+                    e.target.value
+                  )
+                }
+              >
+                <option value="">Seleccionar color</option>
+                {colors.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {sizes.length === 0 && product.sizes ? (
             <p className="product-extra">
               <strong>Tallas:</strong> {normalizeOptionText(product.sizes)}
             </p>
           ) : null}
 
-          {product.colors ? (
+          {colors.length === 0 && product.colors ? (
             <p className="product-extra">
               <strong>Colores:</strong> {normalizeOptionText(product.colors)}
             </p>
@@ -886,6 +997,8 @@ ${orderSummary.items
             order.items.map((item, index) => (
               <span key={index}>
                 {item.name} x{item.qty} = ₡{item.subtotal}
+                {item.size ? ` | Talla: ${item.size}` : ""}
+                {item.color ? ` | Color: ${item.color}` : ""}
               </span>
             ))
           ) : (
@@ -932,7 +1045,7 @@ ${orderSummary.items
           <div className="nav-cart-wrap">
             <nav className="nav">
               <a href="#catalogo">Catálogo</a>
-              <a href="#destacados">Destacados</a>
+              <a href="#productos">Productos</a>
               <a href="#admin">Administrar</a>
             </nav>
 
@@ -1014,6 +1127,58 @@ ${orderSummary.items
         </div>
       </section>
 
+      <section className="section category-section" id="catalogo">
+        <div className="container">
+          <div className="section-head">
+            <div>
+              <p className="section-kicker">Catálogo</p>
+              <h3>Categorías principales</h3>
+            </div>
+          </div>
+
+          <div className="categories-scroll-wrap">
+            <div className="category-grid category-grid-scroll">
+              <button
+                type="button"
+                className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
+                onClick={() => setSelectedCategory("Todos")}
+              >
+                <div className="category-image-wrap">
+                  <img
+                    src={allCategoryImage}
+                    alt="Todos"
+                    loading="lazy"
+                    onError={handleImageError}
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <span className="category-title">Todos</span>
+              </button>
+
+              {categories.map((item) => (
+                <button
+                  type="button"
+                  className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
+                  key={item.name}
+                  onClick={() => setSelectedCategory(item.name)}
+                >
+                  <div className="category-image-wrap">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      loading="lazy"
+                      onError={handleImageError}
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <span className="category-title">{item.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {successMessage ? (
         <section className="section">
           <div className="container">
@@ -1063,80 +1228,23 @@ ${orderSummary.items
         </section>
       ) : null}
 
-      <section className="section" id="destacados">
+      <section className="section products-section" id="productos">
         <div className="container">
           <div className="section-head">
             <div>
-              <p className="section-kicker">Más vendidos</p>
-              <h3>Productos destacados</h3>
+              <p className="section-kicker">Productos</p>
+              <h3>
+                {selectedCategory === "Todos"
+                  ? "Productos disponibles"
+                  : selectedCategory}
+              </h3>
             </div>
-            <span className="soft-pill">Top: vestidos de baño</span>
+            <span className="soft-pill">
+              {filteredProducts.length} producto(s)
+            </span>
           </div>
 
           <div className="product-grid">
-            {products.length > 0 ? (
-              products.slice(0, 8).map((product) => renderProductCard(product))
-            ) : (
-              <div className="empty-state">
-                Todavía no hay productos cargados. Usá el panel de administración
-                de abajo para agregar el primero.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="section light" id="catalogo">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <p className="section-kicker">Catálogo</p>
-              <h3>Categorías principales</h3>
-            </div>
-          </div>
-
-          <div className="categories-scroll-wrap">
-            <div className="category-grid category-grid-scroll">
-              <button
-                type="button"
-                className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
-                onClick={() => setSelectedCategory("Todos")}
-              >
-                <div className="category-image-wrap">
-                  <img
-                    src={allCategoryImage}
-                    alt="Todos"
-                    loading="lazy"
-                    onError={handleImageError}
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <span className="category-title">Todos</span>
-              </button>
-
-              {categories.map((item) => (
-                <button
-                  type="button"
-                  className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
-                  key={item.name}
-                  onClick={() => setSelectedCategory(item.name)}
-                >
-                  <div className="category-image-wrap">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      loading="lazy"
-                      onError={handleImageError}
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <span className="category-title">{item.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="product-grid product-grid-catalog">
             {filteredProducts.length > 0 ? (
               filteredProducts.map((product) => renderProductCard(product))
             ) : (
@@ -1296,7 +1404,7 @@ ${orderSummary.items
                       Cancelar edición
                     </button>
                   ) : (
-                    <a className="btn btn-secondary" href="#destacados">
+                    <a className="btn btn-secondary" href="#productos">
                       Ver productos
                     </a>
                   )}
@@ -1558,7 +1666,7 @@ ${orderSummary.items
 
                   <div className="cart-items-list">
                     {cart.map((item) => (
-                      <div className="cart-item" key={item.id}>
+                      <div className="cart-item" key={item.cartKey}>
                         <img
                           src={normalizeImageUrl(item.image)}
                           alt={item.name}
@@ -1570,28 +1678,28 @@ ${orderSummary.items
                           <strong>{item.name}</strong>
                           <span>₡{item.price}</span>
                           <span>Stock: {item.stock}</span>
-                          {item.sizes ? (
-                            <span>Tallas: {normalizeOptionText(item.sizes)}</span>
+                          {item.selectedSize ? (
+                            <span>Talla: {item.selectedSize}</span>
                           ) : null}
-                          {item.colors ? (
-                            <span>Colores: {normalizeOptionText(item.colors)}</span>
+                          {item.selectedColor ? (
+                            <span>Color: {item.selectedColor}</span>
                           ) : null}
                         </div>
 
                         <div className="cart-item-actions">
                           <div className="qty-box">
-                            <button type="button" onClick={() => decreaseQty(item.id)}>
+                            <button type="button" onClick={() => decreaseQty(item.cartKey)}>
                               -
                             </button>
                             <span>{item.qty}</span>
-                            <button type="button" onClick={() => increaseQty(item.id)}>
+                            <button type="button" onClick={() => increaseQty(item.cartKey)}>
                               +
                             </button>
                           </div>
                           <button
                             className="remove-btn"
                             type="button"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeFromCart(item.cartKey)}
                           >
                             Quitar
                           </button>
