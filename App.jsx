@@ -27,6 +27,13 @@ const initialForm = {
   category: "Vestidos",
 };
 
+const initialCheckout = {
+  customerName: "",
+  customerPhone: "",
+  deliveryType: "retiro_local",
+  deliveryAddress: "",
+};
+
 export default function App() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -48,6 +55,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [successMessage, setSuccessMessage] = useState("");
   const [lastOrderSummary, setLastOrderSummary] = useState(null);
+
+  const [checkoutData, setCheckoutData] = useState(initialCheckout);
 
   useEffect(() => {
     getProducts();
@@ -110,9 +119,34 @@ export default function App() {
     return `NHG-${Date.now()}`;
   }
 
+  function getShippingCost(deliveryType) {
+    if (deliveryType === "gam") return 2500;
+    if (deliveryType === "fuera_gam") return 3500;
+    return 0;
+  }
+
+  function getDeliveryLabel(deliveryType) {
+    if (deliveryType === "gam") return "Envío dentro del GAM";
+    if (deliveryType === "fuera_gam") return "Envío fuera del GAM";
+    return "Retiro en local físico";
+  }
+
   async function createOrder(method) {
     if (!cart.length) {
       alert("El carrito está vacío.");
+      return null;
+    }
+
+    if (!checkoutData.customerName.trim() || !checkoutData.customerPhone.trim()) {
+      alert("Completá nombre y celular.");
+      return null;
+    }
+
+    if (
+      checkoutData.deliveryType !== "retiro_local" &&
+      !checkoutData.deliveryAddress.trim()
+    ) {
+      alert("Completá la dirección de entrega.");
       return null;
     }
 
@@ -126,20 +160,29 @@ export default function App() {
       subtotal: Number(item.price) * item.qty,
     }));
 
-    const total = cart.reduce(
+    const subtotal = cart.reduce(
       (sum, item) => sum + Number(item.price) * item.qty,
       0
     );
 
+    const shippingCost = getShippingCost(checkoutData.deliveryType);
+    const total = subtotal + shippingCost;
+
     const { error: orderError } = await supabase.from("Pedidos").insert([
       {
         order_number: orderNumber,
-        customer_name: "Cliente web",
-        customer_phone: "No definido",
+        customer_name: checkoutData.customerName.trim(),
+        customer_phone: checkoutData.customerPhone.trim(),
         items: orderItems,
         total,
         payment_method: method,
         status: "pendiente",
+        delivery_type: checkoutData.deliveryType,
+        delivery_address:
+          checkoutData.deliveryType === "retiro_local"
+            ? ""
+            : checkoutData.deliveryAddress.trim(),
+        shipping_cost: shippingCost,
       },
     ]);
 
@@ -165,13 +208,23 @@ export default function App() {
     const summary = {
       orderNumber,
       method,
+      subtotal,
+      shippingCost,
       total,
+      deliveryType: checkoutData.deliveryType,
+      deliveryAddress:
+        checkoutData.deliveryType === "retiro_local"
+          ? ""
+          : checkoutData.deliveryAddress.trim(),
+      customerName: checkoutData.customerName.trim(),
+      customerPhone: checkoutData.customerPhone.trim(),
       items: orderItems,
     };
 
     setLastOrderSummary(summary);
     setSuccessMessage(`Compra exitosa. Tu número de pedido es ${orderNumber}.`);
     clearCart();
+    setCheckoutData(initialCheckout);
     setCartOpen(false);
     await getProducts();
     await getOrders();
@@ -179,9 +232,32 @@ export default function App() {
     return summary;
   }
 
+  async function updateOrderStatus(orderId, newStatus) {
+    const { error } = await supabase
+      .from("Pedidos")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo actualizar el estado del pedido.");
+      return;
+    }
+
+    await getOrders();
+  }
+
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function handleCheckoutChange(e) {
+    const { name, value } = e.target;
+    setCheckoutData((current) => ({
       ...current,
       [name]: value,
     }));
@@ -380,9 +456,19 @@ export default function App() {
     [cart]
   );
 
-  const cartTotal = useMemo(
+  const cartSubtotal = useMemo(
     () => cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0),
     [cart]
+  );
+
+  const shippingCost = useMemo(
+    () => getShippingCost(checkoutData.deliveryType),
+    [checkoutData.deliveryType]
+  );
+
+  const cartTotal = useMemo(
+    () => cartSubtotal + shippingCost,
+    [cartSubtotal, shippingCost]
   );
 
   const isAllowedUser =
@@ -405,7 +491,13 @@ export default function App() {
       `Nuevo pedido 🛍️
 
 Número de pedido: ${orderSummary.orderNumber}
+Cliente: ${orderSummary.customerName}
+Celular: ${orderSummary.customerPhone}
 Método de pago: ${orderSummary.method}
+Entrega: ${getDeliveryLabel(orderSummary.deliveryType)}
+${orderSummary.deliveryAddress ? `Dirección: ${orderSummary.deliveryAddress}` : ""}
+Subtotal: ₡${orderSummary.subtotal}
+Envío: ₡${orderSummary.shippingCost}
 Total: ₡${orderSummary.total}
 
 Productos:
@@ -489,8 +581,14 @@ ${orderSummary.items
                 {lastOrderSummary ? (
                   <div className="admin-text">
                     <p><strong>Pedido:</strong> {lastOrderSummary.orderNumber}</p>
+                    <p><strong>Cliente:</strong> {lastOrderSummary.customerName}</p>
+                    <p><strong>Celular:</strong> {lastOrderSummary.customerPhone}</p>
                     <p><strong>Total:</strong> ₡{lastOrderSummary.total}</p>
                     <p><strong>Método:</strong> {lastOrderSummary.method}</p>
+                    <p><strong>Entrega:</strong> {getDeliveryLabel(lastOrderSummary.deliveryType)}</p>
+                    {lastOrderSummary.deliveryAddress ? (
+                      <p><strong>Dirección:</strong> {lastOrderSummary.deliveryAddress}</p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -845,12 +943,20 @@ ${orderSummary.items
                   <div className="admin-list-item" key={order.id}>
                     <div className="admin-list-info">
                       <strong>{order.order_number || "Sin número"}</strong>
+                      <span>Cliente: {order.customer_name}</span>
+                      <span>Celular: {order.customer_phone}</span>
                       <span>Método: {order.payment_method}</span>
-                      <span>Estado: {order.status}</span>
+                      <span>
+                        Entrega: {getDeliveryLabel(order.delivery_type || "retiro_local")}
+                      </span>
+                      {order.delivery_address ? (
+                        <span>Dirección: {order.delivery_address}</span>
+                      ) : null}
                     </div>
 
                     <div className="admin-list-meta">
                       <span>Total: ₡{order.total}</span>
+                      <span>Envío: ₡{order.shipping_cost || 0}</span>
                       <span>
                         {order.created_at
                           ? new Date(order.created_at).toLocaleString()
@@ -869,6 +975,30 @@ ${orderSummary.items
                       ) : (
                         <span>Sin detalle</span>
                       )}
+                    </div>
+
+                    <div className="admin-list-buttons">
+                      <button
+                        className="btn btn-secondary small-btn"
+                        type="button"
+                        onClick={() => updateOrderStatus(order.id, "pendiente")}
+                      >
+                        Pendiente
+                      </button>
+                      <button
+                        className="btn btn-primary small-btn"
+                        type="button"
+                        onClick={() => updateOrderStatus(order.id, "pagado")}
+                      >
+                        Pagado
+                      </button>
+                      <button
+                        className="btn btn-transfer small-btn"
+                        type="button"
+                        onClick={() => updateOrderStatus(order.id, "entregado")}
+                      >
+                        Entregado
+                      </button>
                     </div>
                   </div>
                 ))
@@ -900,39 +1030,100 @@ ${orderSummary.items
               {cart.length === 0 ? (
                 <div className="empty-state">Tu carrito está vacío.</div>
               ) : (
-                cart.map((item) => (
-                  <div className="cart-item" key={item.id}>
-                    <img src={item.image} alt={item.name} />
-                    <div className="cart-item-info">
-                      <strong>{item.name}</strong>
-                      <span>₡{item.price}</span>
-                      <span>Stock: {item.stock}</span>
-                    </div>
+                <>
+                  {cart.map((item) => (
+                    <div className="cart-item" key={item.id}>
+                      <img src={item.image} alt={item.name} />
+                      <div className="cart-item-info">
+                        <strong>{item.name}</strong>
+                        <span>₡{item.price}</span>
+                        <span>Stock: {item.stock}</span>
+                      </div>
 
-                    <div className="cart-item-actions">
-                      <div className="qty-box">
-                        <button type="button" onClick={() => decreaseQty(item.id)}>
-                          -
-                        </button>
-                        <span>{item.qty}</span>
-                        <button type="button" onClick={() => increaseQty(item.id)}>
-                          +
+                      <div className="cart-item-actions">
+                        <div className="qty-box">
+                          <button type="button" onClick={() => decreaseQty(item.id)}>
+                            -
+                          </button>
+                          <span>{item.qty}</span>
+                          <button type="button" onClick={() => increaseQty(item.id)}>
+                            +
+                          </button>
+                        </div>
+                        <button
+                          className="remove-btn"
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          Quitar
                         </button>
                       </div>
-                      <button
-                        className="remove-btn"
-                        type="button"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        Quitar
-                      </button>
+                    </div>
+                  ))}
+
+                  <div className="admin-form" style={{ marginTop: "10px" }}>
+                    <div className="form-grid">
+                      <div className="field">
+                        <label>Nombre</label>
+                        <input
+                          name="customerName"
+                          value={checkoutData.customerName}
+                          onChange={handleCheckoutChange}
+                          placeholder="Tu nombre"
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label>Celular</label>
+                        <input
+                          name="customerPhone"
+                          value={checkoutData.customerPhone}
+                          onChange={handleCheckoutChange}
+                          placeholder="8888-8888"
+                        />
+                      </div>
+
+                      <div className="field field-full">
+                        <label>Tipo de entrega</label>
+                        <select
+                          name="deliveryType"
+                          value={checkoutData.deliveryType}
+                          onChange={handleCheckoutChange}
+                        >
+                          <option value="retiro_local">Retirar en local físico</option>
+                          <option value="gam">Envío dentro del GAM - ₡2500</option>
+                          <option value="fuera_gam">Envío fuera del GAM - ₡3500</option>
+                        </select>
+                      </div>
+
+                      {checkoutData.deliveryType !== "retiro_local" ? (
+                        <div className="field field-full">
+                          <label>Dirección de entrega</label>
+                          <input
+                            name="deliveryAddress"
+                            value={checkoutData.deliveryAddress}
+                            onChange={handleCheckoutChange}
+                            placeholder="Provincia, cantón, distrito, señas exactas"
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                ))
+                </>
               )}
             </div>
 
             <div className="cart-footer">
+              <div className="cart-total">
+                <strong>Subtotal:</strong>
+                <span>₡{cartSubtotal}</span>
+              </div>
+
+              <div className="cart-total">
+                <strong>Envío:</strong>
+                <span>₡{shippingCost}</span>
+              </div>
+
               <div className="cart-total">
                 <strong>Total:</strong>
                 <span>₡{cartTotal}</span>
