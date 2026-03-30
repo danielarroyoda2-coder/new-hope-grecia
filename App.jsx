@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 
 const categories = [
@@ -109,6 +109,7 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [categoryViewOpen, setCategoryViewOpen] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState("");
   const [lastOrderSummary, setLastOrderSummary] = useState(null);
@@ -126,8 +127,6 @@ export default function App() {
   const [viewerTitle, setViewerTitle] = useState("");
 
   const [productSelections, setProductSelections] = useState({});
-
-  const catalogProductsRef = useRef(null);
 
   useEffect(() => {
     getProducts();
@@ -524,8 +523,15 @@ export default function App() {
 
   function handleCategoryClick(categoryName) {
     setSelectedCategory(categoryName);
+    setCategoryViewOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleBackToCategories() {
+    setCategoryViewOpen(false);
+    setSelectedCategory("Todos");
     setTimeout(() => {
-      catalogProductsRef.current?.scrollIntoView({
+      document.getElementById("catalogo")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -1045,6 +1051,9 @@ ${orderSummary.items
     );
   }
 
+  const catalogTitle =
+    selectedCategory === "Todos" ? "Todos los productos" : selectedCategory;
+
   return (
     <div className="site">
       <header className="topbar">
@@ -1138,66 +1147,80 @@ ${orderSummary.items
         </div>
       </section>
 
-      <section className="section category-section" id="catalogo">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <p className="section-kicker">Catálogo</p>
-              <h3>Categorías principales</h3>
+      {!categoryViewOpen ? (
+        <section className="section category-section" id="catalogo">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Catálogo</p>
+                <h3>Categorías principales</h3>
+              </div>
             </div>
-          </div>
 
-          <div className="categories-scroll-wrap">
-            <div className="category-grid category-grid-scroll">
-              <button
-                type="button"
-                className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
-                onClick={() => handleCategoryClick("Todos")}
-              >
-                <div className="category-image-wrap">
-                  <img
-                    src={allCategoryImage}
-                    alt="Todos"
-                    loading="lazy"
-                    onError={handleImageError}
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <span className="category-title">Todos</span>
-              </button>
-
-              {categories.map((item) => (
+            <div className="categories-scroll-wrap">
+              <div className="category-grid category-grid-scroll">
                 <button
                   type="button"
-                  className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
-                  key={item.name}
-                  onClick={() => handleCategoryClick(item.name)}
+                  className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
+                  onClick={() => handleCategoryClick("Todos")}
                 >
                   <div className="category-image-wrap">
                     <img
-                      src={item.image}
-                      alt={item.name}
+                      src={allCategoryImage}
+                      alt="Todos"
                       loading="lazy"
                       onError={handleImageError}
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <span className="category-title">{item.name}</span>
+                  <span className="category-title">Todos</span>
                 </button>
-              ))}
+
+                {categories.map((item) => (
+                  <button
+                    type="button"
+                    className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
+                    key={item.name}
+                    onClick={() => handleCategoryClick(item.name)}
+                  >
+                    <div className="category-image-wrap">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        loading="lazy"
+                        onError={handleImageError}
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <span className="category-title">{item.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+        </section>
+      ) : (
+        <section className="section category-products-view" id="catalogo">
+          <div className="container">
+            <div className="category-products-top">
+              <button
+                className="back-link-btn"
+                type="button"
+                onClick={handleBackToCategories}
+              >
+                ← Volver a categorías
+              </button>
 
-          <div className="catalog-products-wrap" ref={catalogProductsRef}>
-            <div className="catalog-products-head">
-              <h4>
-                {selectedCategory === "Todos"
-                  ? "Todos los productos"
-                  : selectedCategory}
-              </h4>
-              <span className="soft-pill small-pill">
-                {filteredProducts.length} producto(s)
-              </span>
+              <div className="category-products-head">
+                <div>
+                  <p className="section-kicker">Categoría</p>
+                  <h3>{catalogTitle}</h3>
+                </div>
+
+                <span className="soft-pill small-pill">
+                  {filteredProducts.length} producto(s)
+                </span>
+              </div>
             </div>
 
             <div className="product-grid">
@@ -1210,8 +1233,8 @@ ${orderSummary.items
               )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {successMessage ? (
         <section className="section">
