@@ -241,6 +241,16 @@ textarea {
   width: 100%;
 }
 
+.back-link-btn {
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* SECCIONES */
 .section {
   padding: 64px 0;
@@ -257,6 +267,10 @@ textarea {
 .category-section {
   padding-top: 18px;
   padding-bottom: 40px;
+}
+
+.category-products-view {
+  padding-top: 18px;
 }
 
 .section-head {
@@ -277,7 +291,8 @@ textarea {
 }
 
 .section-head h3,
-.admin-box h3 {
+.admin-box h3,
+.category-products-head h3 {
   margin: 0;
   font-size: 34px;
   color: #111827;
@@ -333,22 +348,17 @@ textarea {
 }
 
 /* PRODUCTOS */
-.catalog-products-wrap {
-  margin-top: 24px;
+.category-products-top {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.catalog-products-head {
+.category-products-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 20px;
-}
-
-.catalog-products-head h4 {
-  margin: 0;
-  font-size: 28px;
-  color: #111827;
 }
 
 .product-grid {
@@ -1066,7 +1076,7 @@ textarea {
 
   .topbar-inner,
   .section-head,
-  .catalog-products-head,
+  .category-products-head,
   .footer-inner {
     flex-direction: column;
     align-items: flex-start;
@@ -1142,7 +1152,7 @@ textarea {
 
   .section-head h3,
   .admin-box h3,
-  .catalog-products-head h4 {
+  .category-products-head h3 {
     font-size: 28px;
   }
 
