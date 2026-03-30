@@ -36,6 +36,12 @@ const initialCheckout = {
   deliveryAddress: "",
 };
 
+const initialCheckoutErrors = {
+  customerName: "",
+  customerPhone: "",
+  deliveryAddress: "",
+};
+
 const fallbackImage =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(`
@@ -68,13 +74,20 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+
   const [successMessage, setSuccessMessage] = useState("");
   const [lastOrderSummary, setLastOrderSummary] = useState(null);
 
   const [checkoutData, setCheckoutData] = useState(initialCheckout);
+  const [checkoutErrors, setCheckoutErrors] = useState(initialCheckoutErrors);
 
   const [newOrderAlert, setNewOrderAlert] = useState("");
   const [audioEnabled, setAudioEnabled] = useState(false);
+
+  const [ordersTab, setOrdersTab] = useState("pendientes");
 
   useEffect(() => {
     getProducts();
@@ -230,22 +243,54 @@ export default function App() {
     return String(value);
   }
 
+  function normalizePhone(value) {
+    return value.replace(/[^\d]/g, "");
+  }
+
+  function formatPhoneDisplay(value) {
+    const digits = normalizePhone(value).slice(0, 8);
+    if (digits.length <= 4) return digits;
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  function validateCheckout(data = checkoutData) {
+    const errors = {
+      customerName: "",
+      customerPhone: "",
+      deliveryAddress: "",
+    };
+
+    if (!data.customerName.trim()) {
+      errors.customerName = "El nombre es obligatorio.";
+    }
+
+    const phoneDigits = normalizePhone(data.customerPhone);
+    if (!phoneDigits) {
+      errors.customerPhone = "El celular es obligatorio.";
+    } else if (phoneDigits.length !== 8) {
+      errors.customerPhone = "El celular debe tener 8 dígitos.";
+    }
+
+    if (
+      data.deliveryType !== "retiro_local" &&
+      !data.deliveryAddress.trim()
+    ) {
+      errors.deliveryAddress = "La dirección de entrega es obligatoria.";
+    }
+
+    setCheckoutErrors(errors);
+
+    return !errors.customerName && !errors.customerPhone && !errors.deliveryAddress;
+  }
+
   async function createOrder(method) {
     if (!cart.length) {
       alert("El carrito está vacío.");
       return null;
     }
 
-    if (!checkoutData.customerName.trim() || !checkoutData.customerPhone.trim()) {
-      alert("Completá nombre y celular.");
-      return null;
-    }
-
-    if (
-      checkoutData.deliveryType !== "retiro_local" &&
-      !checkoutData.deliveryAddress.trim()
-    ) {
-      alert("Completá la dirección de entrega.");
+    const valid = validateCheckout();
+    if (!valid) {
       return null;
     }
 
@@ -271,7 +316,7 @@ export default function App() {
       {
         order_number: orderNumber,
         customer_name: checkoutData.customerName.trim(),
-        customer_phone: checkoutData.customerPhone.trim(),
+        customer_phone: formatPhoneDisplay(checkoutData.customerPhone),
         items: orderItems,
         total,
         payment_method: method,
@@ -316,7 +361,7 @@ export default function App() {
           ? ""
           : checkoutData.deliveryAddress.trim(),
       customerName: checkoutData.customerName.trim(),
-      customerPhone: checkoutData.customerPhone.trim(),
+      customerPhone: formatPhoneDisplay(checkoutData.customerPhone),
       items: orderItems,
     };
 
@@ -324,6 +369,7 @@ export default function App() {
     setSuccessMessage(`Compra exitosa. Tu número de pedido es ${orderNumber}.`);
     clearCart();
     setCheckoutData(initialCheckout);
+    setCheckoutErrors(initialCheckoutErrors);
     setCartOpen(false);
     await getProducts();
     await getOrders();
@@ -362,10 +408,40 @@ export default function App() {
 
   function handleCheckoutChange(e) {
     const { name, value } = e.target;
-    setCheckoutData((current) => ({
-      ...current,
+
+    if (name === "customerPhone") {
+      const formatted = formatPhoneDisplay(value);
+      setCheckoutData((current) => ({
+        ...current,
+        [name]: formatted,
+      }));
+
+      if (checkoutErrors.customerPhone) {
+        validateCheckout({
+          ...checkoutData,
+          customerPhone: formatted,
+        });
+      }
+      return;
+    }
+
+    const nextData = {
+      ...checkoutData,
       [name]: value,
-    }));
+    };
+
+    setCheckoutData(nextData);
+
+    if (checkoutErrors[name]) {
+      validateCheckout(nextData);
+    }
+
+    if (name === "deliveryType" && value === "retiro_local") {
+      setCheckoutErrors((current) => ({
+        ...current,
+        deliveryAddress: "",
+      }));
+    }
   }
 
   function handleEdit(product) {
@@ -575,12 +651,37 @@ export default function App() {
   );
 
   const filteredProducts = useMemo(() => {
-    if (selectedCategory === "Todos") return products;
-    return products.filter((product) => product.category === selectedCategory);
-  }, [products, selectedCategory]);
+    let result = [...products];
 
-  const activeOrders = useMemo(
-    () => orders.filter((order) => order.status !== "entregado"),
+    if (selectedCategory !== "Todos") {
+      result = result.filter((product) => product.category === selectedCategory);
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      result = result.filter((product) =>
+        String(product.name || "").toLowerCase().includes(term)
+      );
+    }
+
+    if (maxPrice !== "") {
+      result = result.filter((product) => Number(product.price) <= Number(maxPrice));
+    }
+
+    if (onlyAvailable) {
+      result = result.filter((product) => Number(product.stock) > 0);
+    }
+
+    return result;
+  }, [products, selectedCategory, searchTerm, maxPrice, onlyAvailable]);
+
+  const pendingOrders = useMemo(
+    () => orders.filter((order) => order.status === "pendiente"),
+    [orders]
+  );
+
+  const paidOrders = useMemo(
+    () => orders.filter((order) => order.status === "pagado"),
     [orders]
   );
 
@@ -589,16 +690,42 @@ export default function App() {
     [orders]
   );
 
-  const pendingOrdersCount = useMemo(
-    () => orders.filter((order) => order.status === "pendiente").length,
+  const activeOrders = useMemo(
+    () => orders.filter((order) => order.status !== "entregado"),
     [orders]
   );
+
+  const pendingOrdersCount = useMemo(
+    () => pendingOrders.length,
+    [pendingOrders]
+  );
+
+  const lowStockProducts = useMemo(
+    () =>
+      products.filter((product) => {
+        const stock = Number(product.stock);
+        return stock > 0 && stock <= 4;
+      }),
+    [products]
+  );
+
+  const currentOrdersList = useMemo(() => {
+    if (ordersTab === "pendientes") return pendingOrders;
+    if (ordersTab === "pagados") return paidOrders;
+    return deliveredOrders;
+  }, [ordersTab, pendingOrders, paidOrders, deliveredOrders]);
 
   function stockLabel(stock) {
     const s = Number(stock);
     if (s === 0) return "❌ Agotado";
     if (s <= 4) return `⚠️ Stock bajo: ${s}`;
     return `Stock: ${s}`;
+  }
+
+  function getStatusLabel(status) {
+    if (status === "pagado") return "Pagado";
+    if (status === "entregado") return "Entregado";
+    return "Pendiente";
   }
 
   function buildOrderWhatsappMessage(orderSummary) {
@@ -619,6 +746,12 @@ Productos:
 ${orderSummary.items
   .map((item) => `- ${item.name} x${item.qty} = ₡${item.subtotal}`)
   .join("\n")}`
+    );
+  }
+
+  function buildSupportWhatsappMessage() {
+    return encodeURIComponent(
+      "Hola, quiero información sobre Boutique New Hope Grecia."
     );
   }
 
@@ -662,9 +795,15 @@ ${orderSummary.items
 
   function renderOrderCard(order) {
     return (
-      <div className="admin-list-item" key={order.id}>
+      <div className="admin-list-item order-card" key={order.id}>
         <div className="admin-list-info">
-          <strong>{order.order_number || "Sin número"}</strong>
+          <div className="order-top-line">
+            <strong>{order.order_number || "Sin número"}</strong>
+            <span className={`status-chip status-${order.status || "pendiente"}`}>
+              {getStatusLabel(order.status)}
+            </span>
+          </div>
+
           <span>Cliente: {order.customer_name}</span>
           <span>Celular: {order.customer_phone}</span>
           <span>Método: {order.payment_method}</span>
@@ -679,7 +818,6 @@ ${orderSummary.items
         <div className="admin-list-meta">
           <span>Total: ₡{order.total}</span>
           <span>Envío: ₡{order.shipping_cost || 0}</span>
-          <span>Estado actual: {order.status}</span>
           <span>
             {order.created_at ? new Date(order.created_at).toLocaleString() : ""}
           </span>
@@ -755,16 +893,7 @@ ${orderSummary.items
       {newOrderAlert ? (
         <section className="section" style={{ padding: "16px 0 0" }}>
           <div className="container">
-            <div
-              style={{
-                background: "#dc2626",
-                color: "white",
-                padding: "16px 20px",
-                borderRadius: "18px",
-                fontWeight: "700",
-                boxShadow: "0 10px 24px rgba(0,0,0,0.12)",
-              }}
-            >
+            <div className="top-alert">
               🔔 {newOrderAlert}
             </div>
           </div>
@@ -774,29 +903,12 @@ ${orderSummary.items
       {isAllowedUser && highlightedOrders.length > 0 ? (
         <section className="section" style={{ padding: "16px 0 0" }}>
           <div className="container">
-            <div
-              style={{
-                background: "#b91c1c",
-                color: "white",
-                padding: "20px",
-                borderRadius: "20px",
-                boxShadow: "0 10px 24px rgba(0,0,0,0.12)",
-              }}
-            >
-              <h3 style={{ marginTop: 0, marginBottom: "12px", color: "white" }}>
-                Pedidos pendientes
-              </h3>
+            <div className="pending-banner">
+              <h3>Pedidos pendientes</h3>
 
-              <div style={{ display: "grid", gap: "10px" }}>
+              <div className="pending-banner-grid">
                 {highlightedOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    style={{
-                      background: "rgba(255,255,255,0.12)",
-                      padding: "14px",
-                      borderRadius: "14px",
-                    }}
-                  >
+                  <div key={order.id} className="pending-banner-item">
                     <strong>{order.order_number || "Sin número"}</strong>
                     <div>Cliente: {order.customer_name}</div>
                     <div>Celular: {order.customer_phone}</div>
@@ -855,7 +967,7 @@ ${orderSummary.items
                 <p className="section-kicker">Compra exitosa</p>
                 <h3>{successMessage}</h3>
                 {lastOrderSummary ? (
-                  <div className="admin-text">
+                  <div className="admin-text purchase-summary">
                     <p><strong>Pedido:</strong> {lastOrderSummary.orderNumber}</p>
                     <p><strong>Cliente:</strong> {lastOrderSummary.customerName}</p>
                     <p><strong>Celular:</strong> {lastOrderSummary.customerPhone}</p>
@@ -908,7 +1020,7 @@ ${orderSummary.items
 
           <div className="product-grid">
             {products.length > 0 ? (
-              products.map((product) => renderProductCard(product))
+              products.slice(0, 8).map((product) => renderProductCard(product))
             ) : (
               <div className="empty-state">
                 Todavía no hay productos cargados. Usá el panel de administración
@@ -925,6 +1037,39 @@ ${orderSummary.items
             <div>
               <p className="section-kicker">Catálogo</p>
               <h3>Categorías principales</h3>
+            </div>
+          </div>
+
+          <div className="catalog-toolbar">
+            <div className="field">
+              <label>Buscar por nombre</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Ej. vestido rojo"
+              />
+            </div>
+
+            <div className="field">
+              <label>Precio máximo</label>
+              <input
+                type="number"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                placeholder="Ej. 20000"
+              />
+            </div>
+
+            <div className="field checkbox-field">
+              <label>Disponibilidad</label>
+              <button
+                type="button"
+                className={`toggle-btn ${onlyAvailable ? "toggle-active" : ""}`}
+                onClick={() => setOnlyAvailable((current) => !current)}
+              >
+                {onlyAvailable ? "Solo disponibles: Sí" : "Solo disponibles: No"}
+              </button>
             </div>
           </div>
 
@@ -949,12 +1094,16 @@ ${orderSummary.items
             ))}
           </div>
 
+          <div className="catalog-results">
+            Mostrando <strong>{filteredProducts.length}</strong> producto(s)
+          </div>
+
           <div className="product-grid" style={{ marginTop: "24px" }}>
             {filteredProducts.length > 0 ? (
               filteredProducts.map((product) => renderProductCard(product))
             ) : (
               <div className="empty-state">
-                No hay productos disponibles en esta categoría.
+                No hay productos disponibles con esos filtros.
               </div>
             )}
           </div>
@@ -1014,7 +1163,7 @@ ${orderSummary.items
               <form className="admin-form" onSubmit={handleSubmit}>
                 <div className="form-grid">
                   <div className="field">
-                    <label>Nombre del producto</label>
+                    <label>Nombre del producto *</label>
                     <input
                       name="name"
                       value={form.name}
@@ -1024,7 +1173,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field">
-                    <label>Precio</label>
+                    <label>Precio *</label>
                     <input
                       name="price"
                       type="number"
@@ -1035,7 +1184,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field">
-                    <label>Stock</label>
+                    <label>Stock *</label>
                     <input
                       name="stock"
                       type="number"
@@ -1046,7 +1195,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field">
-                    <label>Categoría</label>
+                    <label>Categoría *</label>
                     <select
                       name="category"
                       value={form.category}
@@ -1061,7 +1210,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field field-full">
-                    <label>URL de imagen</label>
+                    <label>URL de imagen *</label>
                     <input
                       name="image"
                       value={form.image}
@@ -1071,7 +1220,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field field-full">
-                    <label>Tallas disponibles (solo panel admin)</label>
+                    <label>Tallas disponibles</label>
                     <input
                       name="sizes"
                       value={form.sizes}
@@ -1081,7 +1230,7 @@ ${orderSummary.items
                   </div>
 
                   <div className="field field-full">
-                    <label>Colores disponibles (solo panel admin)</label>
+                    <label>Colores disponibles</label>
                     <input
                       name="colors"
                       value={form.colors}
@@ -1121,6 +1270,30 @@ ${orderSummary.items
           )}
         </div>
       </section>
+
+      {isAllowedUser && lowStockProducts.length > 0 ? (
+        <section className="section light">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Reposición</p>
+                <h3>Productos por reponer</h3>
+              </div>
+              <span className="soft-pill">{lowStockProducts.length} con stock bajo</span>
+            </div>
+
+            <div className="replenish-grid">
+              {lowStockProducts.map((product) => (
+                <div key={product.id} className="replenish-card">
+                  <strong>{product.name}</strong>
+                  <span>{product.category}</span>
+                  <span>{stockLabel(product.stock)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {isAllowedUser ? (
         <section className="section light">
@@ -1184,55 +1357,56 @@ ${orderSummary.items
       ) : null}
 
       {isAllowedUser ? (
-        <>
-          <section className="section">
-            <div className="container">
-              <div className="section-head">
-                <div>
-                  <p className="section-kicker">Pedidos</p>
-                  <h3>Pedidos activos</h3>
-                  <p className="admin-text" style={{ marginTop: "8px" }}>
-                    Activos: <strong>{activeOrders.length}</strong> | Pendientes:{" "}
-                    <strong>{pendingOrdersCount}</strong>
-                  </p>
-                </div>
-              </div>
-
-              {ordersMessage ? <p className="status-message">{ordersMessage}</p> : null}
-
-              <div className="admin-list">
-                {activeOrders.length > 0 ? (
-                  activeOrders.map((order) => renderOrderCard(order))
-                ) : (
-                  <div className="empty-state">
-                    No hay pedidos activos en este momento.
-                  </div>
-                )}
+        <section className="section">
+          <div className="container">
+            <div className="section-head">
+              <div>
+                <p className="section-kicker">Pedidos</p>
+                <h3>Panel de pedidos</h3>
+                <p className="admin-text" style={{ marginTop: "8px" }}>
+                  Activos: <strong>{activeOrders.length}</strong> | Pendientes:{" "}
+                  <strong>{pendingOrdersCount}</strong>
+                </p>
               </div>
             </div>
-          </section>
 
-          <section className="section light">
-            <div className="container">
-              <div className="section-head">
-                <div>
-                  <p className="section-kicker">Historial</p>
-                  <h3>Pedidos entregados</h3>
-                </div>
-              </div>
+            {ordersMessage ? <p className="status-message">{ordersMessage}</p> : null}
 
-              <div className="admin-list">
-                {deliveredOrders.length > 0 ? (
-                  deliveredOrders.map((order) => renderOrderCard(order))
-                ) : (
-                  <div className="empty-state">
-                    Aún no hay pedidos entregados.
-                  </div>
-                )}
-              </div>
+            <div className="orders-tabs">
+              <button
+                type="button"
+                className={`orders-tab ${ordersTab === "pendientes" ? "orders-tab-active" : ""}`}
+                onClick={() => setOrdersTab("pendientes")}
+              >
+                Pendientes ({pendingOrders.length})
+              </button>
+              <button
+                type="button"
+                className={`orders-tab ${ordersTab === "pagados" ? "orders-tab-active" : ""}`}
+                onClick={() => setOrdersTab("pagados")}
+              >
+                Pagados ({paidOrders.length})
+              </button>
+              <button
+                type="button"
+                className={`orders-tab ${ordersTab === "entregados" ? "orders-tab-active" : ""}`}
+                onClick={() => setOrdersTab("entregados")}
+              >
+                Entregados ({deliveredOrders.length})
+              </button>
             </div>
-          </section>
-        </>
+
+            <div className="admin-list">
+              {currentOrdersList.length > 0 ? (
+                currentOrdersList.map((order) => renderOrderCard(order))
+              ) : (
+                <div className="empty-state">
+                  No hay pedidos en esta sección.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       ) : null}
 
       {cartOpen ? (
@@ -1288,30 +1462,44 @@ ${orderSummary.items
                     </div>
                   ))}
 
-                  <div className="admin-form" style={{ marginTop: "10px" }}>
+                  <div className="checkout-card">
+                    <h4>Datos de compra</h4>
+
                     <div className="form-grid">
                       <div className="field">
-                        <label>Nombre</label>
+                        <label>Nombre *</label>
                         <input
                           name="customerName"
                           value={checkoutData.customerName}
                           onChange={handleCheckoutChange}
+                          onBlur={() => validateCheckout()}
                           placeholder="Tu nombre"
+                          className={checkoutErrors.customerName ? "input-error" : ""}
                         />
+                        {checkoutErrors.customerName ? (
+                          <p className="field-error">{checkoutErrors.customerName}</p>
+                        ) : null}
                       </div>
 
                       <div className="field">
-                        <label>Celular</label>
+                        <label>Celular *</label>
                         <input
                           name="customerPhone"
                           value={checkoutData.customerPhone}
                           onChange={handleCheckoutChange}
+                          onBlur={() => validateCheckout()}
                           placeholder="8888-8888"
+                          className={checkoutErrors.customerPhone ? "input-error" : ""}
                         />
+                        {checkoutErrors.customerPhone ? (
+                          <p className="field-error">{checkoutErrors.customerPhone}</p>
+                        ) : (
+                          <p className="field-help">Formato: 8888-8888</p>
+                        )}
                       </div>
 
                       <div className="field field-full">
-                        <label>Tipo de entrega</label>
+                        <label>Tipo de entrega *</label>
                         <select
                           name="deliveryType"
                           value={checkoutData.deliveryType}
@@ -1325,15 +1513,40 @@ ${orderSummary.items
 
                       {checkoutData.deliveryType !== "retiro_local" ? (
                         <div className="field field-full">
-                          <label>Dirección de entrega</label>
+                          <label>Dirección de entrega *</label>
                           <input
                             name="deliveryAddress"
                             value={checkoutData.deliveryAddress}
                             onChange={handleCheckoutChange}
+                            onBlur={() => validateCheckout()}
                             placeholder="Provincia, cantón, distrito, señas exactas"
+                            className={checkoutErrors.deliveryAddress ? "input-error" : ""}
                           />
+                          {checkoutErrors.deliveryAddress ? (
+                            <p className="field-error">{checkoutErrors.deliveryAddress}</p>
+                          ) : null}
                         </div>
                       ) : null}
+                    </div>
+
+                    <div className="checkout-summary">
+                      <h5>Resumen antes de confirmar</h5>
+                      <div className="summary-line">
+                        <span>Productos</span>
+                        <strong>{cartCount}</strong>
+                      </div>
+                      <div className="summary-line">
+                        <span>Subtotal</span>
+                        <strong>₡{cartSubtotal}</strong>
+                      </div>
+                      <div className="summary-line">
+                        <span>Envío</span>
+                        <strong>₡{shippingCost}</strong>
+                      </div>
+                      <div className="summary-line summary-total">
+                        <span>Total</span>
+                        <strong>₡{cartTotal}</strong>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -1361,6 +1574,7 @@ ${orderSummary.items
                   className="btn btn-secondary"
                   type="button"
                   onClick={clearCart}
+                  disabled={!cart.length}
                 >
                   Vaciar carrito
                 </button>
@@ -1375,6 +1589,7 @@ ${orderSummary.items
                     const msg = buildOrderWhatsappMessage(result);
                     window.open(`https://wa.me/50670477509?text=${msg}`, "_blank");
                   }}
+                  disabled={!cart.length}
                 >
                   Pedir por WhatsApp
                 </button>
@@ -1398,6 +1613,7 @@ SINPE:
 Enviá comprobante por WhatsApp`
                     );
                   }}
+                  disabled={!cart.length}
                 >
                   Pagar con SINPE
                 </button>
@@ -1419,6 +1635,7 @@ Banco: BAC
 Cuenta: 945904472`
                     );
                   }}
+                  disabled={!cart.length}
                 >
                   Transferencia
                 </button>
@@ -1439,6 +1656,7 @@ Total: ₡${result.total}
 Próximamente pago con tarjeta`
                     );
                   }}
+                  disabled={!cart.length}
                 >
                   Pagar con tarjeta
                 </button>
@@ -1449,7 +1667,7 @@ Próximamente pago con tarjeta`
       ) : null}
 
       <a
-        href="https://wa.me/50670477509"
+        href={`https://wa.me/50670477509?text=${buildSupportWhatsappMessage()}`}
         target="_blank"
         rel="noreferrer"
         className="whatsapp-float"
@@ -1462,23 +1680,9 @@ Próximamente pago con tarjeta`
           height="28"
           fill="currentColor"
         >
-          <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.06-.11-.24-.18-.51-.31z" />
-          <path d="M16.01 3.2c-7.07 0-12.8 5.72-12.8 12.79 0 2.25.59 4.45 1.71 6.38L3.2 28.8l6.58-1.69a12.74 12.74 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.73 12.79-12.8 0-3.43-1.33-6.66-3.76-9.09A12.7 12.7 0 0 0 16.01 3.2zm0 23.34h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.91 1 1.05-3.81-.25-.39a10.6 10.6 0 0 1-1.63-5.67c0-5.86 4.77-10.63 10.64-10.63 2.83 0 5.49 1.1 7.49 3.11a10.5 10.5 0 0 1 3.11 7.5c0 5.87-4.77 10.64-10.64 10.64z" />
+          <path d="M19.11 17.2c-.27-.13-1.58-.78-1.82-.87-.24-.09-.42-.13-.6.13-.18.27-.69.87-.85 1.04-.16.18-.31.2-.58.07-.27-.13-1.12-.41-2.13-1.32-.79-.7-1.32-1.56-1.47-1.82-.16-.27-.02-.41.11-.54.12-.12.27-.31.4-.47.13-.16.18-.27.27-.45.09-.18.04-.34-.02-.47-.07-.13-.6-1.45-.82-1.98-.22-.53-.44-.46-.6-.47h-.51c-.18 0-.47.07-.72.34-.24.27-.94.92-.94 2.24 0 1.32.96 2.59 1.09 2.77.13.18 1.88 2.87 4.56 4.02.64.27 1.14.43 1.53.55.64.2 1.22.17 1.68.1.51-.08 1.58-.64 1.8-1.26.22-.62.22-1.15.15-1.26-.07-.11-.24-.18-.51-.31zM16.03 3C8.84 3 3 8.74 3 15.82c0 2.49.73 4.92 2.11 7l-1.38 5.02 5.17-1.35a13.17 13.17 0 0 0 6.13 1.54h.01c7.18 0 13.02-5.74 13.02-12.82C28.06 8.74 23.22 3 16.03 3zm0 23.45h-.01a10.9 10.9 0 0 1-5.56-1.53l-.4-.24-3.07.8.82-2.97-.26-.42a10.73 10.73 0 0 1-1.66-5.66c0-5.92 4.85-10.74 10.82-10.74 5.96 0 10.81 4.82 10.81 10.74 0 5.92-4.85 10.74-10.79 10.74z" />
         </svg>
       </a>
-
-      <footer className="footer">
-        <div className="container footer-inner">
-          <div>
-            <strong>Boutique New Hope Grecia</strong>
-            <p>Moda femenina y masculina con estilo, color y elegancia.</p>
-          </div>
-          <div>
-            <p>Grecia, Costa Rica</p>
-            <p>WhatsApp y pagos reales próximamente</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
