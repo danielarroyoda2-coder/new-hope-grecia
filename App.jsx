@@ -579,6 +579,21 @@ export default function App() {
     return products.filter((product) => product.category === selectedCategory);
   }, [products, selectedCategory]);
 
+  const activeOrders = useMemo(
+    () => orders.filter((order) => order.status !== "entregado"),
+    [orders]
+  );
+
+  const deliveredOrders = useMemo(
+    () => orders.filter((order) => order.status === "entregado"),
+    [orders]
+  );
+
+  const pendingOrdersCount = useMemo(
+    () => orders.filter((order) => order.status === "pendiente").length,
+    [orders]
+  );
+
   function stockLabel(stock) {
     const s = Number(stock);
     if (s === 0) return "❌ Agotado";
@@ -642,6 +657,71 @@ ${orderSummary.items
           </button>
         </div>
       </article>
+    );
+  }
+
+  function renderOrderCard(order) {
+    return (
+      <div className="admin-list-item" key={order.id}>
+        <div className="admin-list-info">
+          <strong>{order.order_number || "Sin número"}</strong>
+          <span>Cliente: {order.customer_name}</span>
+          <span>Celular: {order.customer_phone}</span>
+          <span>Método: {order.payment_method}</span>
+          <span>
+            Entrega: {getDeliveryLabel(order.delivery_type || "retiro_local")}
+          </span>
+          {order.delivery_address ? (
+            <span>Dirección: {order.delivery_address}</span>
+          ) : null}
+        </div>
+
+        <div className="admin-list-meta">
+          <span>Total: ₡{order.total}</span>
+          <span>Envío: ₡{order.shipping_cost || 0}</span>
+          <span>Estado actual: {order.status}</span>
+          <span>
+            {order.created_at ? new Date(order.created_at).toLocaleString() : ""}
+          </span>
+        </div>
+
+        <div className="admin-list-info">
+          <strong>Productos</strong>
+          {Array.isArray(order.items) ? (
+            order.items.map((item, index) => (
+              <span key={index}>
+                {item.name} x{item.qty} = ₡{item.subtotal}
+              </span>
+            ))
+          ) : (
+            <span>Sin detalle</span>
+          )}
+        </div>
+
+        <div className="admin-list-buttons">
+          <button
+            className="btn btn-secondary small-btn"
+            type="button"
+            onClick={() => updateOrderStatus(order.id, "pendiente")}
+          >
+            Pendiente
+          </button>
+          <button
+            className="btn btn-primary small-btn"
+            type="button"
+            onClick={() => updateOrderStatus(order.id, "pagado")}
+          >
+            Pagado
+          </button>
+          <button
+            className="btn btn-transfer small-btn"
+            type="button"
+            onClick={() => updateOrderStatus(order.id, "entregado")}
+          >
+            Entregado
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -1104,91 +1184,55 @@ ${orderSummary.items
       ) : null}
 
       {isAllowedUser ? (
-        <section className="section">
-          <div className="container">
-            <div className="section-head">
-              <div>
-                <p className="section-kicker">Pedidos</p>
-                <h3>Pedidos recibidos</h3>
+        <>
+          <section className="section">
+            <div className="container">
+              <div className="section-head">
+                <div>
+                  <p className="section-kicker">Pedidos</p>
+                  <h3>Pedidos activos</h3>
+                  <p className="admin-text" style={{ marginTop: "8px" }}>
+                    Activos: <strong>{activeOrders.length}</strong> | Pendientes:{" "}
+                    <strong>{pendingOrdersCount}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {ordersMessage ? <p className="status-message">{ordersMessage}</p> : null}
+
+              <div className="admin-list">
+                {activeOrders.length > 0 ? (
+                  activeOrders.map((order) => renderOrderCard(order))
+                ) : (
+                  <div className="empty-state">
+                    No hay pedidos activos en este momento.
+                  </div>
+                )}
               </div>
             </div>
+          </section>
 
-            {ordersMessage ? <p className="status-message">{ordersMessage}</p> : null}
-
-            <div className="admin-list">
-              {orders.length > 0 ? (
-                orders.map((order) => (
-                  <div className="admin-list-item" key={order.id}>
-                    <div className="admin-list-info">
-                      <strong>{order.order_number || "Sin número"}</strong>
-                      <span>Cliente: {order.customer_name}</span>
-                      <span>Celular: {order.customer_phone}</span>
-                      <span>Método: {order.payment_method}</span>
-                      <span>
-                        Entrega: {getDeliveryLabel(order.delivery_type || "retiro_local")}
-                      </span>
-                      {order.delivery_address ? (
-                        <span>Dirección: {order.delivery_address}</span>
-                      ) : null}
-                    </div>
-
-                    <div className="admin-list-meta">
-                      <span>Total: ₡{order.total}</span>
-                      <span>Envío: ₡{order.shipping_cost || 0}</span>
-                      <span>Estado actual: {order.status}</span>
-                      <span>
-                        {order.created_at
-                          ? new Date(order.created_at).toLocaleString()
-                          : ""}
-                      </span>
-                    </div>
-
-                    <div className="admin-list-info">
-                      <strong>Productos</strong>
-                      {Array.isArray(order.items) ? (
-                        order.items.map((item, index) => (
-                          <span key={index}>
-                            {item.name} x{item.qty} = ₡{item.subtotal}
-                          </span>
-                        ))
-                      ) : (
-                        <span>Sin detalle</span>
-                      )}
-                    </div>
-
-                    <div className="admin-list-buttons">
-                      <button
-                        className="btn btn-secondary small-btn"
-                        type="button"
-                        onClick={() => updateOrderStatus(order.id, "pendiente")}
-                      >
-                        Pendiente
-                      </button>
-                      <button
-                        className="btn btn-primary small-btn"
-                        type="button"
-                        onClick={() => updateOrderStatus(order.id, "pagado")}
-                      >
-                        Pagado
-                      </button>
-                      <button
-                        className="btn btn-transfer small-btn"
-                        type="button"
-                        onClick={() => updateOrderStatus(order.id, "entregado")}
-                      >
-                        Entregado
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="empty-state">
-                  Aún no hay pedidos registrados.
+          <section className="section light">
+            <div className="container">
+              <div className="section-head">
+                <div>
+                  <p className="section-kicker">Historial</p>
+                  <h3>Pedidos entregados</h3>
                 </div>
-              )}
+              </div>
+
+              <div className="admin-list">
+                {deliveredOrders.length > 0 ? (
+                  deliveredOrders.map((order) => renderOrderCard(order))
+                ) : (
+                  <div className="empty-state">
+                    Aún no hay pedidos entregados.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </>
       ) : null}
 
       {cartOpen ? (
