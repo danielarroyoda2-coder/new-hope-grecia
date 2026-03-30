@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 
 const categories = [
@@ -126,6 +126,8 @@ export default function App() {
   const [viewerTitle, setViewerTitle] = useState("");
 
   const [productSelections, setProductSelections] = useState({});
+
+  const catalogProductsRef = useRef(null);
 
   useEffect(() => {
     getProducts();
@@ -518,6 +520,16 @@ export default function App() {
         [field]: value,
       },
     }));
+  }
+
+  function handleCategoryClick(categoryName) {
+    setSelectedCategory(categoryName);
+    setTimeout(() => {
+      catalogProductsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
   }
 
   function handleEdit(product) {
@@ -1045,7 +1057,6 @@ ${orderSummary.items
           <div className="nav-cart-wrap">
             <nav className="nav">
               <a href="#catalogo">Catálogo</a>
-              <a href="#productos">Productos</a>
               <a href="#admin">Administrar</a>
             </nav>
 
@@ -1141,7 +1152,7 @@ ${orderSummary.items
               <button
                 type="button"
                 className={`category-card category-card-visual ${selectedCategory === "Todos" ? "category-active" : ""}`}
-                onClick={() => setSelectedCategory("Todos")}
+                onClick={() => handleCategoryClick("Todos")}
               >
                 <div className="category-image-wrap">
                   <img
@@ -1160,7 +1171,7 @@ ${orderSummary.items
                   type="button"
                   className={`category-card category-card-visual ${selectedCategory === item.name ? "category-active" : ""}`}
                   key={item.name}
-                  onClick={() => setSelectedCategory(item.name)}
+                  onClick={() => handleCategoryClick(item.name)}
                 >
                   <div className="category-image-wrap">
                     <img
@@ -1174,6 +1185,29 @@ ${orderSummary.items
                   <span className="category-title">{item.name}</span>
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="catalog-products-wrap" ref={catalogProductsRef}>
+            <div className="catalog-products-head">
+              <h4>
+                {selectedCategory === "Todos"
+                  ? "Todos los productos"
+                  : selectedCategory}
+              </h4>
+              <span className="soft-pill small-pill">
+                {filteredProducts.length} producto(s)
+              </span>
+            </div>
+
+            <div className="product-grid">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => renderProductCard(product))
+              ) : (
+                <div className="empty-state">
+                  No hay productos disponibles en esta categoría.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1227,34 +1261,6 @@ ${orderSummary.items
           </div>
         </section>
       ) : null}
-
-      <section className="section products-section" id="productos">
-        <div className="container">
-          <div className="section-head">
-            <div>
-              <p className="section-kicker">Productos</p>
-              <h3>
-                {selectedCategory === "Todos"
-                  ? "Productos disponibles"
-                  : selectedCategory}
-              </h3>
-            </div>
-            <span className="soft-pill">
-              {filteredProducts.length} producto(s)
-            </span>
-          </div>
-
-          <div className="product-grid">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => renderProductCard(product))
-            ) : (
-              <div className="empty-state">
-                No hay productos disponibles en esta categoría.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
       <section className="section" id="admin">
         <div className="container">
@@ -1404,8 +1410,8 @@ ${orderSummary.items
                       Cancelar edición
                     </button>
                   ) : (
-                    <a className="btn btn-secondary" href="#productos">
-                      Ver productos
+                    <a className="btn btn-secondary" href="#catalogo">
+                      Ver catálogo
                     </a>
                   )}
                 </div>
